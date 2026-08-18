@@ -1,0 +1,32 @@
+{
+  "name": "pulsekit",
+  "description": "",
+  "homepage": "https://github.com/AbhishekRajoria/PulseKit#readme",
+  "bugs": {
+    "url": "https://github.com/AbhishekRajoria/PulseKit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AbhishekRajoria/PulseKit.git"
+  },
+  "license": "MIT",
+  "author": "Abhishek Rajoria",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  }
+}
