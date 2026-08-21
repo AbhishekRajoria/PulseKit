@@ -81,17 +81,12 @@ req 6: 429
 
 ### Code layout
 
-Monorepo layout — `apps/web` (dashboard) and `packages/sdk` arrive in later steps.
+Monorepo layout — `packages/sdk` arrives in a later step.
 
 ```
-apps/api/
-  src/
-    index.ts                    # Express app entry
-    routes/test.Routes.ts       # GET / route, rate limiter mounted here
-    controllers/test.controller.ts
-    middleware/rateLimiter.ts   # sliding-window Redis rate limiter
-    middleware/script.lua       # atomic check-then-add Lua script
-    middleware/ratelimiter.test.ts  # Vitest suite (4 tests)
+apps/
+  api/    # Express + Redis rate limiter
+  web/    # Next.js dashboard (App Router)
 ```
 
 ### Tests
