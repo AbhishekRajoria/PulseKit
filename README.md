@@ -57,6 +57,7 @@ This is a true sliding window (not a fixed bucket): the window moves with each r
 ### Run it
 
 ```bash
+cd apps/api
 npm install
 
 # needs a local Redis on :6379 (e.g. `docker run -d -p 6379:6379 redis`)
@@ -80,19 +81,23 @@ req 6: 429
 
 ### Code layout
 
+Monorepo layout — `apps/web` (dashboard) and `packages/sdk` arrive in later steps.
+
 ```
-src/
-  index.ts                    # Express app entry
-  routes/test.Routes.ts       # GET / route, rate limiter mounted here
-  controllers/test.controller.ts
-  middleware/rateLimiter.ts   # sliding-window Redis rate limiter
-  middleware/script.lua       # atomic check-then-add Lua script
-  middleware/ratelimiter.test.ts  # Vitest suite (4 tests)
+apps/api/
+  src/
+    index.ts                    # Express app entry
+    routes/test.Routes.ts       # GET / route, rate limiter mounted here
+    controllers/test.controller.ts
+    middleware/rateLimiter.ts   # sliding-window Redis rate limiter
+    middleware/script.lua       # atomic check-then-add Lua script
+    middleware/ratelimiter.test.ts  # Vitest suite (4 tests)
 ```
 
 ### Tests
 
 ```bash
+cd apps/api
 npm test   # needs local Redis on :6379
 ```
 
