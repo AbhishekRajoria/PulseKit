@@ -26,16 +26,22 @@ A sliding-window rate limiter backed by Redis, protecting an Express endpoint.
 
 ### How it works
 
-Redis sorted set keyed by client IP (`ratelimit:<ip>`). Each request is a member scored by the current timestamp in milliseconds:
+Redis sorted set keyed by client IP (`ratelimit:<ip>`). Each request is a member scored by the current timestamp in milliseconds. A single **Lua script** runs the whole decision atomically inside Redis:
 
-```
-ZADD            ratelimit:<ip>  <now>  <now>-<random>
-ZREMRANGEBYSCORE ratelimit:<ip>  -inf   <now - 60000>   # drop entries older than the window
-ZCARD           ratelimit:<ip>                          # count remaining = requests in window
-EXPIRE          ratelimit:<ip>  60                      # keep the key from persisting forever
+```lua
+ZREMRANGEBYSCORE ratelimit:<ip>  -inf   <now - 60000>   -- drop entries older than the window
+count = ZCARD ratelimit:<ip>                             -- requests currently in window
+if count < limit then
+  ZADD ratelimit:<ip> <now> <now>-<random>               -- consume a slot ONLY if under limit
+  EXPIRE ratelimit:<ip> 60
+  return {1, count + 1}                                  -- allowed
+end
+return {0, count}                                        -- blocked, key untouched
 ```
 
-All four operations run in a single Redis pipeline — atomic and fast. This is a true sliding window (not a fixed bucket): the window moves with each request, so a burst at `t=0` and one at `t=59s` are measured against each other.
+This is a true sliding window (not a fixed bucket): the window moves with each request, so a burst at `t=0` and one at `t=59s` are measured against each other.
+
+**Why a Lua script instead of a pipeline?** Pipelines batch commands but are *not* atomic — other clients' commands can interleave between them, so concurrent requests can race between `ZADD` and `ZCARD`. A script executes as one indivisible unit, which also enables check-then-add semantics: blocked requests never touch the key, so hammering a blocked endpoint doesn't extend its own lockout or TTL.
 
 ### The contract
 
@@ -45,6 +51,7 @@ All four operations run in a single Redis pipeline — atomic and fast. This is 
 
 - Allowed requests → `200 OK`
 - Breach → **`429 Too Many Requests`** with a `Retry-After: 60` header
+- Blocked requests consume no quota — only allowed requests write to the key
 - Redis unreachable → fails open (request passes, logged to console)
 
 ### Run it
@@ -75,11 +82,21 @@ req 6: 429
 
 ```
 src/
-  index.ts                 # Express app entry
-  routes/test.Routes.ts    # GET / route, rate limiter mounted here
+  index.ts                    # Express app entry
+  routes/test.Routes.ts       # GET / route, rate limiter mounted here
   controllers/test.controller.ts
-  middleware/rateLimiter.ts  # sliding-window Redis rate limiter
+  middleware/rateLimiter.ts   # sliding-window Redis rate limiter
+  middleware/script.lua       # atomic check-then-add Lua script
+  middleware/ratelimiter.test.ts  # Vitest suite (4 tests)
 ```
+
+### Tests
+
+```bash
+npm test   # needs local Redis on :6379
+```
+
+Covers: limit enforcement (5 pass, 6th blocked), `Retry-After` header, blocked-requests-don't-consume-quota (regression tripwire), and window sliding across the 60s boundary.
 
 ## Tech Stack
 
@@ -106,8 +123,10 @@ Building toward the full PulseKit platform via independent mini-projects:
 
 - Sliding window vs fixed bucket rate limiting
 - Redis sorted sets (`ZADD`, `ZREMRANGEBYSCORE`, `ZCARD`)
-- Redis pipelines for atomicity
+- Race conditions in check-then-act sequences — and why Lua scripts (not pipelines) give atomicity
+- Check-then-add semantics: blocked requests consume no quota
 - Failing open vs failing closed on infrastructure errors
+- Unit-testing Express middleware with spy-based fakes
 
 ## License
 
