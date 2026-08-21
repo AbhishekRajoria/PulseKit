@@ -26,3 +26,7 @@ Thumbs.db
 coverage/
 test-results/
 playwright-report/
+
+#Practice
+practice.*
+
