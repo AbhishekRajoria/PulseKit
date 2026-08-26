@@ -1,35 +1,28 @@
 "use client";
 
-export default function Events({
+export default function EventsError({
   error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
-  }) {
-
+}) {
   return (
-    <main className="max-w-5xl  mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold tracking-tight">Event</h1>
-
-      <table className="mt-6 w-full border-collapse text-left text-sm">
-        <thead className="">
-          <tr className="border-b text-xs uppercase tracking-wide text-gray-500">
-            <th className="px-4 py-3 font-medium ">Event Name</th>
-            <th className="px-4 py-3 font-medium ">Status</th>
-            <th className="px-4 py-3 font-medium ">Channel</th>
-            <th className="px-4 py-3 font-medium ">Received At</th>
-          </tr>
-        </thead>
-      </table>
-      <div className="flex flex-col items-center py-10 bg-gray-100 font-bold ">
-        <span>Error Loading Data</span>
-        <span>{error.message}</span>
+    <main className="max-w-6xl mx-auto px-6 py-10">
+      <h1 className="text-2xl font-bold tracking-tight">Events</h1>
+      <div className="mt-12 flex flex-col items-center gap-4 rounded-lg border border-red-100 bg-red-50/50 py-12">
+        <svg className="h-10 w-10 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <div className="text-center">
+          <p className="text-sm font-medium text-gray-900">Failed to load events</p>
+          <p className="mt-1 text-xs text-gray-500">{error.message}</p>
+        </div>
         <button
           onClick={() => reset()}
-          className="bg-gray-400 hover:bg-gray-300 hover:px-1.5  w-fit px-2 py-1 rounded-sm"
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
         >
-          Retry
+          Try again
         </button>
       </div>
     </main>

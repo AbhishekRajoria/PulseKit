@@ -1,78 +1,103 @@
-import { useState, type SubmitEvent, type ChangeEvent } from "react";
-import { submitForm } from "../actions/events";
+"use client";
 
-export type EventForm = {
-  eventName: string;
-  userId: string;
-  payload: string;
-};
+import { useState } from "react";
+import { submitForm } from "../actions/events";
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";
 
 export function SendEventForm() {
-  const [form, setForm] = useState<EventForm>({
-    eventName: "",
-    userId: "",
-    payload: "",
-  });
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [message, setMessage] = useState("");
 
-  const handleInput = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { id, value } = e.target;
-    setForm((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("loading");
 
-    // mock submit — no real POST endpoint yet
-    const result = await submitForm(new FormData(e.target));
+    const formData = new FormData(e.currentTarget);
+    const result = await submitForm(formData);
 
     if (result.success) {
       setStatus("success");
-      setForm({ eventName: "", userId: "", payload: "" });
+      setMessage("Event sent successfully");
+      e.currentTarget.reset();
     } else {
       setStatus("error");
+      setMessage(result.error || "Failed to send event");
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label>
-        Name:{" "}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="eventName" className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
+          Event Name
+        </label>
         <input
           type="text"
           id="eventName"
           name="eventName"
-          value={form.eventName}
-          onChange={handleInput}
+          required
+          placeholder="e.g. user.signup"
+          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
         />
-      </label>
-      <label>
-        User Id:{" "}
+      </div>
+
+      <div>
+        <label htmlFor="userId" className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
+          User ID
+        </label>
         <input
           type="text"
           id="userId"
           name="userId"
-          value={form.userId}
-          onChange={handleInput}
+          required
+          placeholder="e.g. u123"
+          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
         />
-      </label>
-      <label>
-        Payload:{" "}
+      </div>
+
+      <div>
+        <label htmlFor="channel" className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
+          Channel
+        </label>
+        <select
+          id="channel"
+          name="channel"
+          required
+          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        >
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="push">Push</option>
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="payload" className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
+          Payload (JSON)
+        </label>
         <textarea
           id="payload"
           name="payload"
-          value={form.payload}
-          onChange={handleInput}
+          rows={3}
+          placeholder='{"key": "value"}'
+          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
         />
-      </label>
-      <button type="submit" disabled={status === "loading"}>
+      </div>
+
+      <button
+        type="submit"
+        disabled={status === "loading"}
+        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+      >
         {status === "loading" ? "Sending..." : "Send Event"}
       </button>
+
+      {message && (
+        <p className={`text-sm ${status === "success" ? "text-emerald-600" : "text-red-600"}`}>
+          {message}
+        </p>
+      )}
     </form>
   );
 }
