@@ -14,13 +14,14 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node --watch src/index.ts",
-    "start": "node src/index.ts",
+    "dev": "node --watch --env-file=.env.local src/index.ts",
+    "start": "node --env-file=.env.local src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
     "pg": "^8.23.0"
