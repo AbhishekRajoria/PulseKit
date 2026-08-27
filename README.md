@@ -49,12 +49,13 @@ Key design decisions:
 |---|---|---|---|
 | `GET` | `/api/v1/events` | API key | List project's events (joined view) |
 | `POST` | `/api/v1/events` | API key | Ingest an event |
-| `GET` | `/api/v1/events/:id` | API key | Fetch one event |
+| `GET` | `/api/v1/events/:id` | API key | Fetch one event with its delivery logs |
 
 - **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
 - **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
 - **Rate limiting** — Post route is rate-limited by a Redis sliding-window limiter.
 - **`GET /events` uses a LEFT JOIN** so events with no `delivery_logs` row yet (still `pending`) are visible with `status: null`.
+- **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
 - **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
 
 ### Dashboard (Next.js)

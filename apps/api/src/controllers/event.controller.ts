@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { pool } from "../db.ts";
-import type { ApiResponse, Event } from "../types/index.ts";
+import type { ApiResponse, DeliveryRow, Event } from "../types/index.ts";
 
 export const getAllEvents = async (
   req: Request,
@@ -77,7 +77,7 @@ export const createEvent = async (
 
 export const getEventbyId = async (
   req: Request,
-  res: Response<ApiResponse<Event[]>>,
+  res: Response<ApiResponse<Event & { logs: DeliveryRow[] }>>,
 ) => {
   const { id } = req.params;
   const project_id = req.project_id;
@@ -85,9 +85,14 @@ export const getEventbyId = async (
   try {
     const event = await pool.query(
       `
-      SELECT *
-      FROM events
-      where id=$1 AND project_id=$2`,
+      SELECT e.*, COALESCE(json_agg(json_build_object(
+        'id', d.id, 'event_id', d.event_id, 'project_id', d.project_id, 'channel', d.channel, 'status', d.status, 'attempt_number', d.attempt_number, 'error_message', d.error_message, 'delivered_at', d.delivered_at))
+        FILTER(WHERE d.id IS NOT NULL), '[]') as logs
+      FROM events e LEFT JOIN delivery_logs d
+      ON d.event_id = e.id
+      WHERE e.id=$1 AND e.project_id=$2
+      GROUP BY e.id;
+      `,
       [id, project_id],
     );
 
