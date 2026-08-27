@@ -5,11 +5,12 @@ import {
   getAllEvents,
   getEventbyId,
 } from "../controllers/event.controller.ts";
+import { apiKeyAuth } from "../middleware/apiKeyAuth.ts";
 
 const router = Router();
 
-router.get("/", getAllEvents);
-router.post("/", rateLimiter, createEvent);
-router.get("/:id", getEventbyId);
+router.get("/", apiKeyAuth, getAllEvents);
+router.post("/", apiKeyAuth, rateLimiter, createEvent);
+router.get("/:id", apiKeyAuth, getEventbyId);
 
 export default router;

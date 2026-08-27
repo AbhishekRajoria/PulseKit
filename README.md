@@ -2,7 +2,7 @@
 
 Developer-facing notification and alerting infrastructure. Instrument your app with a tiny SDK, define rules in a dashboard, and PulseKit handles multi-channel delivery (email, Slack, webhook, in-app) with retries, rate limiting, deduplication, and real-time status.
 
-> 🚧 **Work in progress.** Currently in the mini-project phase: each core concept is built independently first, then assembled into PulseKit. This repo currently contains **Mini-Project 1 — a Redis sliding-window rate limiter**.
+> 🚧 **Work in progress.** Currently in the mini-project phase: each core concept is built independently first, then assembled into PulseKit.
 
 ## The Problem
 
@@ -20,113 +20,102 @@ pulse.notify({
 })
 ```
 
-## Current Status — Mini-Project 1: Rate Limiter
+## Current Status — Core Schema + Ingestion API
 
-A sliding-window rate limiter backed by Redis, protecting an Express endpoint.
+PulseKit's canonical database schema and the Express ingestion API that writes to it are in place. This is the foundation the delivery workers (email, Slack, webhook, in-app) will later read from.
 
-### How it works
+### Database schema (PostgreSQL)
 
-Redis sorted set keyed by client IP (`ratelimit:<ip>`). Each request is a member scored by the current timestamp in milliseconds. A single **Lua script** runs the whole decision atomically inside Redis:
+Five tables, ordered by foreign-key dependency:
 
-```lua
-ZREMRANGEBYSCORE ratelimit:<ip>  -inf   <now - 60000>   -- drop entries older than the window
-count = ZCARD ratelimit:<ip>                             -- requests currently in window
-if count < limit then
-  ZADD ratelimit:<ip> <now> <now>-<random>               -- consume a slot ONLY if under limit
-  EXPIRE ratelimit:<ip> 60
-  return {1, count + 1}                                  -- allowed
-end
-return {0, count}                                        -- blocked, key untouched
-```
+| Migration | Table | Purpose |
+|---|---|---|
+| `001_create_users.sql` | `users` | PulseKit account owners |
+| `002_create_projects.sql` | `projects` | A user's app(s), each with an `api_key` |
+| `003_create_events.sql` | `events` | Ingested events (`event_name`, `user_id`, `payload`) |
+| `004_create_delivery_logs.sql` | `delivery_logs` | **Append-only** — one row per delivery attempt, never updated |
+| `005_create_notifications.sql` | `notifications` | User-facing notification records |
 
-This is a true sliding window (not a fixed bucket): the window moves with each request, so a burst at `t=0` and one at `t=59s` are measured against each other.
+Key design decisions:
 
-**Why a Lua script instead of a pipeline?** Pipelines batch commands but are *not* atomic — other clients' commands can interleave between them, so concurrent requests can race between `ZADD` and `ZCARD`. A script executes as one indivisible unit, which also enables check-then-add semantics: blocked requests never touch the key, so hammering a blocked endpoint doesn't extend its own lockout or TTL.
+- **`events` has no `status` or `channel`** — those live on `delivery_logs`. An `Event` returned by the API is a **joined view** of `events` + latest `delivery_logs` row.
+- **`delivery_logs` is append-only** — every attempt is a new row (retry history, no destructive updates).
+- **Canonical channels:** `email | slack | webhook | inapp`
+- **Canonical statuses:** `pending | delivered | failed | rate_limited | deduplicated`
 
-### The contract
+### Ingestion API (Express)
 
-| Limit | Window |
-|---|---|
-| 5 requests | 60 seconds |
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `GET` | `/api/v1/events` | API key | List project's events (joined view) |
+| `POST` | `/api/v1/events` | API key | Ingest an event |
+| `GET` | `/api/v1/events/:id` | API key | Fetch one event |
 
-- Allowed requests → `200 OK`
-- Breach → **`429 Too Many Requests`** with a `Retry-After: 60` header
-- Blocked requests consume no quota — only allowed requests write to the key
-- Redis unreachable → fails open (request passes, logged to console)
+- **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
+- **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
+- **Rate limiting** — Post route is rate-limited by a Redis sliding-window limiter.
+- **`GET /events` uses a LEFT JOIN** so events with no `delivery_logs` row yet (still `pending`) are visible with `status: null`.
+- **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
 
-### Run it
+### Dashboard (Next.js)
 
-```bash
-cd apps/api
-npm install
-
-# needs a local Redis on :6379 (e.g. `docker run -d -p 6379:6379 redis`)
-npm run dev
-```
-
-Then spam the endpoint:
-
-```bash
-for i in $(seq 1 6); do curl -s -o /dev/null -w "req $i: %{http_code}\n" http://localhost:3000/; done
-```
-
-```
-req 1: 200
-req 2: 200
-req 3: 200
-req 4: 200
-req 5: 200
-req 6: 429
-```
-
-### Code layout
-
-Monorepo layout — `packages/sdk` arrives in a later step.
-
-```
-apps/
-  api/    # Express + Redis rate limiter
-  web/    # Next.js dashboard (App Router)
-```
-
-### Tests
-
-```bash
-cd apps/api
-npm test   # needs local Redis on :6379
-```
-
-Covers: limit enforcement (5 pass, 6th blocked), `Retry-After` header, blocked-requests-don't-consume-quota (regression tripwire), and window sliding across the 60s boundary.
+App Router dashboard under `apps/web`. Pages fetch from the Express API directly and render the joined event view with real status/channel.
 
 ## Tech Stack
 
 | Layer | Tech |
 |---|---|
-| API | Node.js + Express |
-| Cache | Redis (ioredis) |
-| Language | TypeScript |
+| API | Node.js + Express + TypeScript |
+| API auth | Bearer API-key middleware, project-scoped |
+| Database | PostgreSQL 18 (`gen_random_uuid()` built in) |
+| Cache / rate limit | Redis (ioredis) + Lua script |
+| Dashboard | Next.js (App Router) |
+| Test | Vitest |
+
+## Run it
+
+```bash
+# API — needs Postgres + Redis
+cd apps/api
+npm install
+npm run dev   # serves on :8080, reads .env.local
+```
+
+```bash
+# Dashboard
+cd apps/web
+npm install
+npm run dev   # serves on :3000, API_URL in .env
+```
+
+## Code layout
+
+```
+apps/
+  api/                 # Express API
+    db/migrations/     # canonical schema (001–005)
+    src/
+      controllers/     # event.controller: list/create/get-one (project-scoped)
+      middleware/      # apiKeyAuth, rateLimiter
+      routes/          # event.routes.ts
+      types/           # EventRow, DeliveryRow, Event (joined), ApiResponse
+      db.ts            # pg Pool
+  web/                 # Next.js dashboard
+```
 
 ## Roadmap
 
 Building toward the full PulseKit platform via independent mini-projects:
 
-- [x] **Mini 1** — Redis sliding-window rate limiter *(this repo)*
+- [x] **Mini 1** — Redis sliding-window rate limiter
+- [x] **Schema** — canonical Postgres model (events + append-only delivery_logs)
+- [x] **Ingestion API** — versioned, API-key auth, project-scoped event CRUD
 - [ ] **Mini 2** — Background job queue (BullMQ) + email via Resend
 - [ ] **Mini 3** — Retry with exponential backoff + dead-letter queue
 - [ ] **Mini 4** — Real-time with WebSocket
-- [ ] **Mini 5** — PostgreSQL relationships
 - [ ] **Mini 6** — Queue + WebSocket combined
-- [ ] **Mini 7** — Multi-channel fan-out
+- [ ] **Mini 7** — Multi-channel fan-out (delivery workers reading delivery_logs)
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
-
-## Concepts Covered
-
-- Sliding window vs fixed bucket rate limiting
-- Redis sorted sets (`ZADD`, `ZREMRANGEBYSCORE`, `ZCARD`)
-- Race conditions in check-then-act sequences — and why Lua scripts (not pipelines) give atomicity
-- Check-then-add semantics: blocked requests consume no quota
-- Failing open vs failing closed on infrastructure errors
-- Unit-testing Express middleware with spy-based fakes
 
 ## License
 
