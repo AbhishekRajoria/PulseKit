@@ -9,9 +9,8 @@ type ActionResponse<T> = {
 export async function submitForm(
   formData: FormData,
 ): Promise<ActionResponse<Record<string, unknown>>> {
-  const event = formData.get("event") as string;
+  const eventName = formData.get("eventName") as string;
   const userId = formData.get("userId") as string;
-  const channel = formData.get("channel") as string;
   const payloadRaw = formData.get("payload") as string;
 
   let payload: Record<string, unknown> | undefined;
@@ -27,10 +26,13 @@ export async function submitForm(
     }
   }
 
-  const res = await fetch(`${process.env.API_URL}/api/events`, {
+  const res = await fetch(`${process.env.API_URL}/api/v1/events`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event, userId, channel, payload }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.API_KEY}`,
+    },
+    body: JSON.stringify({ event_name: eventName, user_id: userId, payload }),
   });
 
   const data = await res.json();

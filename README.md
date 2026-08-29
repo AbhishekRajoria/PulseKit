@@ -60,7 +60,7 @@ Key design decisions:
 
 ### Dashboard (Next.js)
 
-App Router dashboard under `apps/web`. Pages fetch from the Express API directly and render the joined event view with real status/channel.
+App Router dashboard under `apps/web`. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). FE types mirror the API's snake_case + nested `logs` shape.
 
 ## Tech Stack
 

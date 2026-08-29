@@ -57,22 +57,6 @@ export function SendEventForm() {
       </div>
 
       <div>
-        <label htmlFor="channel" className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
-          Channel
-        </label>
-        <select
-          id="channel"
-          name="channel"
-          required
-          className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-        >
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
-          <option value="push">Push</option>
-        </select>
-      </div>
-
-      <div>
         <label htmlFor="payload" className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
           Payload (JSON)
         </label>
