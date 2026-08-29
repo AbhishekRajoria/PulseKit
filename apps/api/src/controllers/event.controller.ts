@@ -4,16 +4,18 @@ import type { ApiResponse, DeliveryRow, Event } from "../types/index.ts";
 
 export const getAllEvents = async (
   req: Request,
-  res: Response<ApiResponse<Event[]>>,
+  res: Response<ApiResponse<(Event & { logs: DeliveryRow[] })[]>>,
 ) => {
   try {
     const project_id = req.project_id;
 
     const result = await pool.query(
-      `SELECT e.*, d.status, d.channel
-      from events e LEFT JOIN delivery_logs d
+      `SELECT e.*, COALESCE(json_agg( json_build_object(
+        'id', d.id, 'event_id', d.event_id, 'project_id', d.project_id, 'channel', d.channel, 'status', d.status, 'attempt_number', d.attempt_number, 'error_message', d.error_message, 'delivered_at', d.delivered_at)) FILTER (WHERE d.id IS NOT NULL), '[]') as logs
+      FROM events e LEFT JOIN delivery_logs d
       ON e.id = d.event_id
-      where e.project_id = $1`,
+      WHERE e.project_id = $1
+      GROUP BY e.id`,
       [project_id],
     );
 
