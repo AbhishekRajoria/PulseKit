@@ -20,9 +20,9 @@ pulse.notify({
 })
 ```
 
-## Current Status — Core Schema + Ingestion API
+## Current Status — Async Email Delivery Pipeline
 
-PulseKit's canonical database schema and the Express ingestion API that writes to it are in place. This is the foundation the delivery workers (email, Slack, webhook, in-app) will later read from.
+The core schema, ingestion API, and **first async delivery path are in place**: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process sends via Resend, and a delivery attempt is appended to `delivery_logs`. Proven end-to-end (Resend test-mode delivered the email to the dev address).
 
 ### Database schema (PostgreSQL)
 
@@ -58,6 +58,14 @@ Key design decisions:
 - **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
 - **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
 
+### Async email delivery (BullMQ + Resend)
+
+- **Producer** — `createEvent` enqueues a job onto the `email` queue (`src/lib/queue.ts`) with `event_id`/`project_id`/`user_id`/`event_name`/`payload`/`to`, then returns `202 Accepted` (delivery is deferred to a background worker).
+- **Consumer** — a **separate** worker process (`src/workers/email.worker.ts`, `npm run worker`) blocks on Redis, sends via Resend (`onboarding@resend.dev` test-mode sender), and appends a `delivery_logs` row.
+- **Fail-closed** — the worker throws on any failure (Resend error or DB insert), so BullMQ marks the job failed and retries; an event is never accepted-but-silently-dropped. The delivery log is the source of truth for "delivered".
+- **BullMQ + ioredis gotcha** — the worker's Redis connection must set `maxRetriesPerRequest: null` (BullMQ blocking commands reject ioredis's default retry cap).
+- **Resend test mode** — without a verified domain, Resend only allows sending to the account owner's own address; real multi-recipient sends require a verified domain (deploy step).
+
 ### Dashboard (Next.js)
 
 App Router dashboard under `apps/web`. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). FE types mirror the API's snake_case + nested `logs` shape.
@@ -70,6 +78,8 @@ App Router dashboard under `apps/web`. Server components fetch the Express API d
 | API auth | Bearer API-key middleware, project-scoped |
 | Database | PostgreSQL 18 (`gen_random_uuid()` built in) |
 | Cache / rate limit | Redis (ioredis) + Lua script |
+| Queue | BullMQ + Redis |
+| Email | Resend (test mode for dev) |
 | Dashboard | Next.js (App Router) |
 | Test | Vitest |
 
@@ -83,6 +93,12 @@ npm run dev   # serves on :8080, reads .env.local
 ```
 
 ```bash
+# Background email worker — separate process, reads the same .env.local
+cd apps/api
+npm run worker
+```
+
+```bash
 # Dashboard
 cd apps/web
 npm install
@@ -93,12 +109,14 @@ npm run dev   # serves on :3000, API_URL in .env
 
 ```
 apps/
-  api/                 # Express API
+  api/                 # Express API + BullMQ email worker
     db/migrations/     # canonical schema (001–005)
     src/
       controllers/     # event.controller: list/create/get-one (project-scoped)
       middleware/      # apiKeyAuth, rateLimiter
       routes/          # event.routes.ts
+      lib/queue.ts     # BullMQ producer (email queue)
+      workers/         # email.worker.ts: async email delivery
       types/           # EventRow, DeliveryRow, Event (joined), ApiResponse
       db.ts            # pg Pool
   web/                 # Next.js dashboard
@@ -111,7 +129,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Mini 1** — Redis sliding-window rate limiter
 - [x] **Schema** — canonical Postgres model (events + append-only delivery_logs)
 - [x] **Ingestion API** — versioned, API-key auth, project-scoped event CRUD
-- [ ] **Mini 2** — Background job queue (BullMQ) + email via Resend
+- [x] **Mini 2** — Background job queue (BullMQ) + email via Resend, proven end-to-end
 - [ ] **Mini 3** — Retry with exponential backoff + dead-letter queue
 - [ ] **Mini 4** — Real-time with WebSocket
 - [ ] **Mini 6** — Queue + WebSocket combined

@@ -17,14 +17,17 @@
     "dev": "node --watch --env-file=.env.local src/index.ts",
     "start": "node --env-file=.env.local src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "worker": "node --watch --env-file=.env.local src/workers/email.worker.ts"
   },
   "dependencies": {
+    "bullmq": "^6.3.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "resend": "^6.25.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

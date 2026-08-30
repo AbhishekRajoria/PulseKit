@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { pool } from "../db.ts";
 import type { ApiResponse, DeliveryRow, Event } from "../types/index.ts";
+import { emailQueue } from "../lib/queue.ts";
 
 export const getAllEvents = async (
   req: Request,
@@ -63,7 +64,16 @@ export const createEvent = async (
       [project_id, event_name, user_id, payload],
     );
 
-    return res.json({
+    await emailQueue.add("email", {
+      event_id: result.rows[0].id,
+      project_id,
+      user_id,
+      event_name,
+      payload,
+      to: "abhishekrajoria24@gmail.com",
+    });
+
+    return res.status(202).json({
       success: true,
       data: result.rows[0],
     });
