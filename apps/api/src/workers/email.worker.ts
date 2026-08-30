@@ -11,7 +11,7 @@ const worker = new Worker(
   "email",
   async (job) => {
     const { error } = await resend.emails.send({
-      from: "onboarding@resend.devc",
+      from: "onboarding@resend.dev",
       to: job.data.to,
       subject: `New event: ${job.data.event_name}`,
       html: `<p>${job.data.event_name} for user ${job.data.user_id}</p>`,
@@ -25,6 +25,10 @@ const worker = new Worker(
       `INSERT INTO delivery_logs (event_id, project_id, channel, status)
        VALUES ($1, $2, $3, $4)`,
       [job.data.event_id, job.data.project_id, "email", "delivered"],
+    );
+
+    console.log(
+      `✅ email sent: "${job.data.event_name}" → ${job.data.to} (job ${job.id}, delivery_log recorded)`,
     );
   },
   { connection },
