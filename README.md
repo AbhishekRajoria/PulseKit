@@ -63,6 +63,9 @@ Key design decisions:
 - **Producer** — `createEvent` enqueues a job onto the `email` queue (`src/lib/queue.ts`) with `event_id`/`project_id`/`user_id`/`event_name`/`payload`/`to`, then returns `202 Accepted` (delivery is deferred to a background worker).
 - **Consumer** — a **separate** worker process (`src/workers/email.worker.ts`, `npm run worker`) blocks on Redis, sends via Resend (`onboarding@resend.dev` test-mode sender), and appends a `delivery_logs` row.
 - **Fail-closed** — the worker throws on any failure (Resend error or DB insert), so BullMQ marks the job failed and retries; an event is never accepted-but-silently-dropped. The delivery log is the source of truth for "delivered".
+- **Retry with exponential backoff + jitter** — the enqueued job is configured with `attempts: 5` and an exponential backoff starting at 2s (±20% per-job jitter to spread the thundering herd). BullMQ drives all retries; the worker's processor throws on failure and the retry engine handles re-delivery.
+- **Dead-letter queue** — a `failed` event listener on the worker detects exhaustion (`attemptsMade >= opts.attempts`), quarantines the job data into a separate `email-dlq` queue (`src/workers/email.worker.ts`), and appends a sentinel `delivery_logs` row (`status='failed'`, `attempt_number = attemptsMade + 1`) so an exhausted event's audit trail closes out honestly (5 real failed attempts 1–5 + the attempt-6 sentinel).
+- **Bull Board (dev only)** — a queue dashboard mounted at `/admin/queues`, gated behind `NODE_ENV !== 'production'` so it's never deployed. Visualizes waiting/active/delayed/failed jobs and allows manual inspection + retry — a teaching/demo tool, not shipped.
 - **BullMQ + ioredis gotcha** — the worker's Redis connection must set `maxRetriesPerRequest: null` (BullMQ blocking commands reject ioredis's default retry cap).
 - **Resend test mode** — without a verified domain, Resend only allows sending to the account owner's own address; real multi-recipient sends require a verified domain (deploy step).
 
@@ -130,7 +133,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Schema** — canonical Postgres model (events + append-only delivery_logs)
 - [x] **Ingestion API** — versioned, API-key auth, project-scoped event CRUD
 - [x] **Mini 2** — Background job queue (BullMQ) + email via Resend, proven end-to-end
-- [ ] **Mini 3** — Retry with exponential backoff + dead-letter queue
+- [x] **Mini 3** — Retry with exponential backoff + dead-letter queue + Bull Board
 - [ ] **Mini 4** — Real-time with WebSocket
 - [ ] **Mini 6** — Queue + WebSocket combined
 - [ ] **Mini 7** — Multi-channel fan-out (delivery workers reading delivery_logs)

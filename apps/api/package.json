@@ -21,6 +21,8 @@
     "worker": "node --watch --env-file=.env.local src/workers/email.worker.ts"
   },
   "dependencies": {
+    "@bull-board/api": "^9.6.0",
+    "@bull-board/express": "^9.6.0",
     "bullmq": "^6.3.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

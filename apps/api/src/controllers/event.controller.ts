@@ -64,14 +64,24 @@ export const createEvent = async (
       [project_id, event_name, user_id, payload],
     );
 
-    await emailQueue.add("email", {
-      event_id: result.rows[0].id,
-      project_id,
-      user_id,
-      event_name,
-      payload,
-      to: "abhishekrajoria24@gmail.com",
-    });
+    await emailQueue.add(
+      "email",
+      {
+        event_id: result.rows[0].id,
+        project_id,
+        user_id,
+        event_name,
+        payload,
+        to: "abhishekrajoria24@gmail.com",
+      },
+      {
+        attempts: 5,
+        backoff: {
+          type: "exponential",
+          delay: 2000 * (0.8 + Math.random() * 0.4),
+        },
+      },
+    );
 
     return res.status(202).json({
       success: true,
