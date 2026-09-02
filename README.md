@@ -20,9 +20,9 @@ pulse.notify({
 })
 ```
 
-## Current Status — Async Email Delivery Pipeline
+## Current Status — Async Email Delivery + Real-Time Live Feed
 
-The core schema, ingestion API, and **first async delivery path are in place**: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process sends via Resend, and a delivery attempt is appended to `delivery_logs`. Proven end-to-end (Resend test-mode delivered the email to the dev address).
+The core schema, ingestion API, **async email delivery path**, and **real-time live feed are in place**: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process sends via Resend, appends a delivery attempt to `delivery_logs`, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. Proven end-to-end (Resend test-mode delivered the email; the dashboard shows delivery updates streaming in real time).
 
 ### Database schema (PostgreSQL)
 
@@ -68,6 +68,7 @@ Key design decisions:
 - **Bull Board (dev only)** — a queue dashboard mounted at `/admin/queues`, gated behind `NODE_ENV !== 'production'` so it's never deployed. Visualizes waiting/active/delayed/failed jobs and allows manual inspection + retry — a teaching/demo tool, not shipped.
 - **BullMQ + ioredis gotcha** — the worker's Redis connection must set `maxRetriesPerRequest: null` (BullMQ blocking commands reject ioredis's default retry cap).
 - **Resend test mode** — without a verified domain, Resend only allows sending to the account owner's own address; real multi-recipient sends require a verified domain (deploy step).
+- **Real-time live feed** — after each delivery attempt the worker `PUBLISH`es a `delivery_update` to the Redis `delivery_updates` channel. The API (`src/lib/websocket.ts`) runs a `WebSocketServer` on the **same HTTP server as Express** (one port, HTTP + WS), subscribes via a dedicated Redis subscriber client, and broadcasts to connected dashboard clients. The dashboard's `LiveFeed` client component opens a browser `WebSocket`, filters by `projectId`, prepends updates, and reconnects with backoff.
 
 ### Dashboard (Next.js)
 
@@ -83,6 +84,7 @@ App Router dashboard under `apps/web`. Server components fetch the Express API d
 | Cache / rate limit | Redis (ioredis) + Lua script |
 | Queue | BullMQ + Redis |
 | Email | Resend (test mode for dev) |
+| Real-time | WebSocket (`ws`) + Redis pub/sub |
 | Dashboard | Next.js (App Router) |
 | Test | Vitest |
 
@@ -102,10 +104,10 @@ npm run worker
 ```
 
 ```bash
-# Dashboard
+# Dashboard — needs .env with API_URL, API_KEY, and NEXT_PUBLIC_WS_URL (ws://localhost:8080)
 cd apps/web
 npm install
-npm run dev   # serves on :3000, API_URL in .env
+npm run dev   # serves on :3000
 ```
 
 ## Code layout
@@ -119,10 +121,15 @@ apps/
       middleware/      # apiKeyAuth, rateLimiter
       routes/          # event.routes.ts
       lib/queue.ts     # BullMQ producer (email queue)
-      workers/         # email.worker.ts: async email delivery
+      lib/redis.ts     # shared ioredis clients (general + subscriber)
+      lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
+      workers/         # email.worker.ts: async email delivery + pub/sub publish
       types/           # EventRow, DeliveryRow, Event (joined), ApiResponse
       db.ts            # pg Pool
   web/                 # Next.js dashboard
+    app/
+      components/
+        LiveFeed.tsx   # live delivery feed (client WebSocket)
 ```
 
 ## Roadmap
@@ -134,8 +141,8 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Ingestion API** — versioned, API-key auth, project-scoped event CRUD
 - [x] **Mini 2** — Background job queue (BullMQ) + email via Resend, proven end-to-end
 - [x] **Mini 3** — Retry with exponential backoff + dead-letter queue + Bull Board
-- [ ] **Mini 4** — Real-time with WebSocket
-- [ ] **Mini 6** — Queue + WebSocket combined
+- [x] **Mini 4** — Real-time with WebSocket
+- [x] **Mini 6** — Queue + WebSocket combined
 - [ ] **Mini 7** — Multi-channel fan-out (delivery workers reading delivery_logs)
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
 

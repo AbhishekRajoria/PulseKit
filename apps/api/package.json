@@ -23,13 +23,15 @@
   "dependencies": {
     "@bull-board/api": "^9.6.0",
     "@bull-board/express": "^9.6.0",
+    "@types/ws": "^8.18.1",
     "bullmq": "^6.3.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
     "pg": "^8.23.0",
-    "resend": "^6.25.0"
+    "resend": "^6.25.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
