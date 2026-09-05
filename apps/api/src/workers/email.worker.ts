@@ -2,6 +2,7 @@ import { Queue, Worker } from "bullmq";
 import { Resend } from "resend";
 import { pool } from "../db.ts";
 import { redis } from "../lib/redis.ts";
+import { channel } from "node:diagnostics_channel";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -139,6 +140,76 @@ const worker = new Worker(
               eventId: job.data.event_id,
               projectId: job.data.project_id,
               channel: "inapp",
+              status: "failed",
+              deliveredAt: new Date().toISOString(),
+            },
+          }),
+        );
+      }
+    }
+
+    if (channels.slack) {
+      try {
+        const res = await fetch(channels.slack?.webhook_url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          redirect: "manual",
+          body: JSON.stringify({
+            text: `New event: ${job.data.event_name} for user ${job.data.user_id}`,
+          }),
+        });
+
+        if (!res.ok) {
+          const hint =
+            res.status >= 300 && res.status < 400
+              ? " (redirect — likely invalid webhook URL)"
+              : "";
+          throw new Error(`Slack returned ${res.status}${hint}`);
+        }
+
+        // log the slack delivery
+        await pool.query(
+          `INSERT INTO delivery_logs (event_id, project_id, channel, status)
+       VALUES ($1, $2, $3, $4)`,
+          [job.data.event_id, job.data.project_id, "slack", "delivered"],
+        );
+
+        // broadcast to live feed
+        redis.publish(
+          "delivery_updates",
+          JSON.stringify({
+            type: "delivery_update",
+            data: {
+              eventId: job.data.event_id,
+              projectId: job.data.project_id,
+              channel: "slack",
+              status: "delivered",
+              deliveredAt: new Date().toISOString(),
+            },
+          }),
+        );
+      } catch (err) {
+        const message = (err as Error).message;
+        await pool.query(
+          `INSERT INTO delivery_logs (event_id, project_id, channel, status, attempt_number, error_message)
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            job.data.event_id,
+            job.data.project_id,
+            "slack",
+            "failed",
+            1,
+            message,
+          ],
+        );
+        redis.publish(
+          "delivery_updates",
+          JSON.stringify({
+            type: "delivery_update",
+            data: {
+              eventId: job.data.event_id,
+              projectId: job.data.project_id,
+              channel: "slack",
               status: "failed",
               deliveredAt: new Date().toISOString(),
             },

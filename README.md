@@ -60,10 +60,11 @@ Key design decisions:
 - **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
 - **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
 
-### Async multi-channel delivery (BullMQ + Resend + in-app)
+### Async multi-channel delivery (BullMQ + Resend + Slack + in-app)
 
 - **Producer** — `createEvent` enqueues a job onto the `email` queue (`src/lib/queue.ts`) with `event_id`/`project_id`/`user_id`/`event_name`/`payload`/`to`, then returns `202 Accepted` (delivery is deferred to a background worker).
-- **Fan-out** — the worker loads the project's `channels` JSONB config and delivers to every enabled channel in one pass. **One queue, one worker, internal fan-out** (channel routing is a concern of the worker, not transport). A `channels` config example: `{"email": {"to": "dev@example.com"}, "inapp": {}}`.
+- **Fan-out** — the worker loads the project's `channels` JSONB config and delivers to every enabled channel in one pass. **One queue, one worker, internal fan-out** (channel routing is a concern of the worker, not transport). A `channels` config example: `{"email": {"to": "dev@example.com"}, "inapp": {}, "slack": {"webhook_url": "https://hooks.slack.com/services/..."}}`.
+- **Channel implementations** — email via Resend; in-app by inserting a row into `notifications`; **Slack via an incoming-webhook POST** (`fetch` with `redirect: "manual"` so a bad/expired webhook URL redirecting to slack.com is treated as a failure, not a silent "delivered").
 - **Per-channel isolation** — each channel runs in its own `try/catch`. A failing channel writes its own `failed` `delivery_logs` row and publishes a `failed` update, but **the job still resolves** so a failure in one channel never re-delivers the others (no duplicate emails). Channel failures are logged once (`attempt_number: 1`) and are not retried — that's the per-channel audit trail.
 - **Catastrophic failures only retry** — a throw *outside* the channel branches (e.g. project config read / DB down) rejects the job, so BullMQ's `attempts: 5` + exponential backoff + jitter still apply — but only when **no channel could be attempted**.
 - **Dead-letter queue** — the `failed` listener now fires only for catastrophic failures: on exhaustion (`attemptsMade >= opts.attempts`) it quarantines the job data into a separate `email-dlq` queue and appends a sentinel `delivery_logs` row (`status='failed'`, `attempt_number = attemptsMade + 1`) so the audit trail closes out honestly.
@@ -123,7 +124,7 @@ apps/
       lib/queue.ts     # BullMQ producer (email queue)
       lib/redis.ts     # shared ioredis clients (general + subscriber)
       lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
-      workers/         # email.worker.ts: multi-channel fan-out + per-channel isolation + pub/sub publish
+      workers/         # email.worker.ts: multi-channel fan-out (email/Slack/in-app) + per-channel isolation + pub/sub publish
       types/           # EventRow, DeliveryRow, Event (joined), ApiResponse
       db.ts            # pg Pool
   web/                 # Next.js dashboard
@@ -143,7 +144,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Mini 3** — Retry with exponential backoff + dead-letter queue + Bull Board
 - [x] **Mini 4** — Real-time with WebSocket
 - [x] **Mini 6** — Queue + WebSocket combined
-- [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app live; Slack/webhook pending)
+- [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app + Slack live; webhook pending)
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
 
 ## License
