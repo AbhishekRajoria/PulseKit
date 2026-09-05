@@ -20,21 +20,22 @@ pulse.notify({
 })
 ```
 
-## Current Status — Async Email Delivery + Real-Time Live Feed
+## Current Status — Multi-Channel Fan-Out + Real-Time Live Feed
 
-The core schema, ingestion API, **async email delivery path**, and **real-time live feed are in place**: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process sends via Resend, appends a delivery attempt to `delivery_logs`, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. Proven end-to-end (Resend test-mode delivered the email; the dashboard shows delivery updates streaming in real time).
+The core schema, ingestion API, **multi-channel async delivery path**, and **real-time live feed are in place**: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process fans out to the project's **enabled channels** (email via Resend, in-app via the `notifications` table), appends a delivery attempt to `delivery_logs` per channel, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. Proven end-to-end (email + in-app rows delivered; the dashboard shows delivery updates streaming in real time).
 
 ### Database schema (PostgreSQL)
 
-Five tables, ordered by foreign-key dependency:
+Five tables plus a `channels` JSONB column on `projects`, ordered by foreign-key dependency:
 
 | Migration | Table | Purpose |
 |---|---|---|
 | `001_create_users.sql` | `users` | PulseKit account owners |
-| `002_create_projects.sql` | `projects` | A user's app(s), each with an `api_key` |
+| `002_create_projects.sql` | `projects` | A user's app(s), each with an `api_key` + `channels` config |
 | `003_create_events.sql` | `events` | Ingested events (`event_name`, `user_id`, `payload`) |
 | `004_create_delivery_logs.sql` | `delivery_logs` | **Append-only** — one row per delivery attempt, never updated |
 | `005_create_notifications.sql` | `notifications` | User-facing notification records |
+| `006_add_channels_to_projects.sql` | `projects` | Adds `channels` JSONB (`{"email": {...}, "inapp": {}, ...}`) |
 
 Key design decisions:
 
@@ -42,6 +43,7 @@ Key design decisions:
 - **`delivery_logs` is append-only** — every attempt is a new row (retry history, no destructive updates).
 - **Canonical channels:** `email | slack | webhook | inapp`
 - **Canonical statuses:** `pending | delivered | failed | rate_limited | deduplicated`
+- **Channels are configured per project** (`channels` JSONB on `projects`) — which channels an event fans out to is the developer's config, not the sender's choice.
 
 ### Ingestion API (Express)
 
@@ -58,15 +60,13 @@ Key design decisions:
 - **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
 - **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
 
-### Async email delivery (BullMQ + Resend)
+### Async multi-channel delivery (BullMQ + Resend + in-app)
 
 - **Producer** — `createEvent` enqueues a job onto the `email` queue (`src/lib/queue.ts`) with `event_id`/`project_id`/`user_id`/`event_name`/`payload`/`to`, then returns `202 Accepted` (delivery is deferred to a background worker).
-- **Consumer** — a **separate** worker process (`src/workers/email.worker.ts`, `npm run worker`) blocks on Redis, sends via Resend (`onboarding@resend.dev` test-mode sender), and appends a `delivery_logs` row.
-- **Fail-closed** — the worker throws on any failure (Resend error or DB insert), so BullMQ marks the job failed and retries; an event is never accepted-but-silently-dropped. The delivery log is the source of truth for "delivered".
-- **Retry with exponential backoff + jitter** — the enqueued job is configured with `attempts: 5` and an exponential backoff starting at 2s (±20% per-job jitter to spread the thundering herd). BullMQ drives all retries; the worker's processor throws on failure and the retry engine handles re-delivery.
-- **Dead-letter queue** — a `failed` event listener on the worker detects exhaustion (`attemptsMade >= opts.attempts`), quarantines the job data into a separate `email-dlq` queue (`src/workers/email.worker.ts`), and appends a sentinel `delivery_logs` row (`status='failed'`, `attempt_number = attemptsMade + 1`) so an exhausted event's audit trail closes out honestly (5 real failed attempts 1–5 + the attempt-6 sentinel).
-- **Bull Board (dev only)** — a queue dashboard mounted at `/admin/queues`, gated behind `NODE_ENV !== 'production'` so it's never deployed. Visualizes waiting/active/delayed/failed jobs and allows manual inspection + retry — a teaching/demo tool, not shipped.
-- **BullMQ + ioredis gotcha** — the worker's Redis connection must set `maxRetriesPerRequest: null` (BullMQ blocking commands reject ioredis's default retry cap).
+- **Fan-out** — the worker loads the project's `channels` JSONB config and delivers to every enabled channel in one pass. **One queue, one worker, internal fan-out** (channel routing is a concern of the worker, not transport). A `channels` config example: `{"email": {"to": "dev@example.com"}, "inapp": {}}`.
+- **Per-channel isolation** — each channel runs in its own `try/catch`. A failing channel writes its own `failed` `delivery_logs` row and publishes a `failed` update, but **the job still resolves** so a failure in one channel never re-delivers the others (no duplicate emails). Channel failures are logged once (`attempt_number: 1`) and are not retried — that's the per-channel audit trail.
+- **Catastrophic failures only retry** — a throw *outside* the channel branches (e.g. project config read / DB down) rejects the job, so BullMQ's `attempts: 5` + exponential backoff + jitter still apply — but only when **no channel could be attempted**.
+- **Dead-letter queue** — the `failed` listener now fires only for catastrophic failures: on exhaustion (`attemptsMade >= opts.attempts`) it quarantines the job data into a separate `email-dlq` queue and appends a sentinel `delivery_logs` row (`status='failed'`, `attempt_number = attemptsMade + 1`) so the audit trail closes out honestly.
 - **Resend test mode** — without a verified domain, Resend only allows sending to the account owner's own address; real multi-recipient sends require a verified domain (deploy step).
 - **Real-time live feed** — after each delivery attempt the worker `PUBLISH`es a `delivery_update` to the Redis `delivery_updates` channel. The API (`src/lib/websocket.ts`) runs a `WebSocketServer` on the **same HTTP server as Express** (one port, HTTP + WS), subscribes via a dedicated Redis subscriber client, and broadcasts to connected dashboard clients. The dashboard's `LiveFeed` client component opens a browser `WebSocket`, filters by `projectId`, prepends updates, and reconnects with backoff.
 
@@ -114,8 +114,8 @@ npm run dev   # serves on :3000
 
 ```
 apps/
-  api/                 # Express API + BullMQ email worker
-    db/migrations/     # canonical schema (001–005)
+  api/                 # Express API + BullMQ multi-channel worker
+    db/migrations/     # canonical schema (001–006)
     src/
       controllers/     # event.controller: list/create/get-one (project-scoped)
       middleware/      # apiKeyAuth, rateLimiter
@@ -123,7 +123,7 @@ apps/
       lib/queue.ts     # BullMQ producer (email queue)
       lib/redis.ts     # shared ioredis clients (general + subscriber)
       lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
-      workers/         # email.worker.ts: async email delivery + pub/sub publish
+      workers/         # email.worker.ts: multi-channel fan-out + per-channel isolation + pub/sub publish
       types/           # EventRow, DeliveryRow, Event (joined), ApiResponse
       db.ts            # pg Pool
   web/                 # Next.js dashboard
@@ -143,7 +143,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Mini 3** — Retry with exponential backoff + dead-letter queue + Bull Board
 - [x] **Mini 4** — Real-time with WebSocket
 - [x] **Mini 6** — Queue + WebSocket combined
-- [ ] **Mini 7** — Multi-channel fan-out (delivery workers reading delivery_logs)
+- [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app live; Slack/webhook pending)
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
 
 ## License
