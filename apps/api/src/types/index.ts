@@ -34,3 +34,13 @@ declare global {
     }
   }
 }
+
+export type NotificationRow = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  title: string;
+  body: string | null;
+  read: boolean;
+  created_at: string;
+};

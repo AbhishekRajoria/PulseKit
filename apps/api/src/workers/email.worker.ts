@@ -150,6 +150,7 @@ const worker = new Worker(
 
     if (channels.slack) {
       try {
+        // send slack webhook with text
         const res = await fetch(channels.slack?.webhook_url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

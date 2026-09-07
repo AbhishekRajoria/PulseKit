@@ -19,6 +19,21 @@ export type Event = {
   received_at: string;
 };
 
+export type Notification = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  title: string;
+  body: string | null;
+  read: boolean;
+  created_at: string;
+};
+
+export type NotificationsResponse = {
+  notifications: Notification[];
+  unread_count: number;
+};
+
 export type ApiResponse<T> = {
   success: boolean;
   data?: T;

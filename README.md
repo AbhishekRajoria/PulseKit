@@ -20,9 +20,9 @@ pulse.notify({
 })
 ```
 
-## Current Status — Multi-Channel Fan-Out + Real-Time Live Feed
+## Current Status — In-App Notifications + Dashboard
 
-The core schema, ingestion API, **multi-channel async delivery path**, and **real-time live feed are in place**: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process fans out to the project's **enabled channels** (email via Resend, in-app via the `notifications` table), appends a delivery attempt to `delivery_logs` per channel, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. Proven end-to-end (email + in-app rows delivered; the dashboard shows delivery updates streaming in real time).
+The core schema, ingestion API, **multi-channel async delivery path**, **real-time live feed**, and **in-app notification consumption** are in place: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process fans out to the project's **enabled channels** (email via Resend, in-app via the `notifications` table, Slack via incoming webhook), appends a delivery attempt to `delivery_logs` per channel, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. The in-app channel writes notification rows that are now consumed by `GET /v1/notifications/:userId` (returns notifications + unread count) and `PATCH /v1/notifications/:id/read` (marks as read). The dashboard wire-up includes a full notifications page with user selector, expand-to-read, mark-as-read, and mark-all-read — all connected to the Express API.
 
 ### Database schema (PostgreSQL)
 
@@ -52,6 +52,8 @@ Key design decisions:
 | `GET` | `/api/v1/events` | API key | List project's events (joined view) |
 | `POST` | `/api/v1/events` | API key | Ingest an event |
 | `GET` | `/api/v1/events/:id` | API key | Fetch one event with its delivery logs |
+| `GET` | `/api/v1/notifications/:userId` | API key | Fetch in-app notifications + unread count |
+| `PATCH` | `/api/v1/notifications/:id/read` | API key | Mark a notification as read |
 
 - **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
 - **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
@@ -73,7 +75,7 @@ Key design decisions:
 
 ### Dashboard (Next.js)
 
-App Router dashboard under `apps/web`. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). FE types mirror the API's snake_case + nested `logs` shape.
+App Router dashboard under `apps/web` with a `(dashboard)` route group. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The events list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). The **notifications page** (client component) fetches `GET /v1/notifications/:userId`, displays an inbox-style list with expand-to-read, mark-as-read, and mark-all-read. Client API routes (`/api/notifications/[id]/route.ts` and `/api/notifications/[id]/read/route.ts`) proxy to Express. FE types mirror the API's snake_case + nested `logs` shape.
 
 ## Tech Stack
 
@@ -118,9 +120,9 @@ apps/
   api/                 # Express API + BullMQ multi-channel worker
     db/migrations/     # canonical schema (001–006)
     src/
-      controllers/     # event.controller: list/create/get-one (project-scoped)
+      controllers/     # event.controller, notification.controller
       middleware/      # apiKeyAuth, rateLimiter
-      routes/          # event.routes.ts
+      routes/          # event.routes.ts, notification.routes.ts
       lib/queue.ts     # BullMQ producer (email queue)
       lib/redis.ts     # shared ioredis clients (general + subscriber)
       lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
@@ -129,6 +131,12 @@ apps/
       db.ts            # pg Pool
   web/                 # Next.js dashboard
     app/
+      (dashboard)/     # route group — shared layout + sidebar
+        components/
+          Sidebar.tsx  # collapsible nav (icon-only desktop, overlay mobile)
+        events/        # list + detail pages
+        notifications/ # inbox page (client component)
+      api/notifications/  # proxy routes to Express
       components/
         LiveFeed.tsx   # live delivery feed (client WebSocket)
 ```
@@ -145,6 +153,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Mini 4** — Real-time with WebSocket
 - [x] **Mini 6** — Queue + WebSocket combined
 - [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app + Slack live; webhook pending)
+- [x] **Mini 8** — In-app notification consumption (GET notifications + unread count, PATCH mark-as-read, dashboard inbox UI)
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
 
 ## License
