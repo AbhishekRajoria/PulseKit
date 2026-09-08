@@ -47,7 +47,7 @@ export default async function EventDetailPage({
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href="/events"
-        className="group inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
+        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
       >
         <svg className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />

@@ -48,6 +48,43 @@ export const getNotifications = async (
   }
 };
 
+export const markAllRead = async (
+  req: Request,
+  res: Response<ApiResponse<{ count: number }>>,
+) => {
+  const project_id = req.project_id;
+  const { userId } = req.body ?? {};
+
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      error: "userId is required.",
+      code: "BAD_REQUEST",
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE notifications
+      SET read = true
+      WHERE project_id = $1 AND user_id = $2 AND read = false`,
+      [project_id, userId],
+    );
+
+    return res.json({
+      success: true,
+      data: { count: result.rowCount ?? 0 },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to mark all notifications as read.",
+      code: "DB_ERROR",
+    });
+  }
+};
+
 export const markAsRead = async (
   req: Request,
   res: Response<ApiResponse<NotificationRow>>,

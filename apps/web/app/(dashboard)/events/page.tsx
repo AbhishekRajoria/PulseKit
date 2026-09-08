@@ -117,7 +117,7 @@ export default async function EventsPage() {
                   return (
                     <tr key={e.id} className="transition-colors hover:bg-gray-50/80">
                       <td className="px-5 py-3.5">
-                        <a href={`/events/${e.id}`} className="font-medium text-gray-900 hover:underline">
+                        <a href={`/events/${e.id}`} className="cursor-pointer font-medium text-gray-900 hover:underline">
                           {e.event_name}
                         </a>
                       </td>
