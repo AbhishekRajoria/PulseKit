@@ -55,6 +55,7 @@ Key design decisions:
 | `GET` | `/api/v1/notifications/:userId` | API key | Fetch in-app notifications + unread count |
 | `PATCH` | `/api/v1/notifications/read-all` | API key | Mark all notifications as read for a user |
 | `PATCH` | `/api/v1/notifications/:id/read` | API key | Mark a notification as read |
+| `GET` | `/health` | None | Liveness/readiness probe — pings Postgres (`SELECT 1`), 200 if reachable, 503 otherwise |
 
 - **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
 - **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
@@ -76,7 +77,7 @@ Key design decisions:
 
 ### Dashboard (Next.js)
 
-App Router dashboard under `apps/web` with a `(dashboard)` route group. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The events list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). The **notifications page** (client component) fetches `GET /v1/notifications/:userId`, displays an inbox-style list with expand-to-read, mark-as-read, and mark-all-read. Client API routes (`/api/notifications/[id]/route.ts`, `/api/notifications/[id]/read/route.ts`, and `/api/notifications/read-all/route.ts`) proxy to Express. FE types mirror the API's snake_case + nested `logs` shape.
+App Router dashboard under `apps/web` with a `(dashboard)` route group. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The events list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). The **notifications page** (client component) fetches `GET /v1/notifications/:userId`, displays an inbox-style list with expand-to-read, mark-as-read, and mark-all-read. Client API routes (`/api/notifications/[id]/route.ts`, `/api/notifications/[id]/read/route.ts`, and `/api/notifications/read-all/route.ts`) proxy to Express. FE types mirror the API's snake_case + nested `logs` shape. The events list page is `force-dynamic` so `next build` skips prerendering the server-side fetch (build succeeds even when the API isn't running, and the page always serves fresh data).
 
 ## Tech Stack
 

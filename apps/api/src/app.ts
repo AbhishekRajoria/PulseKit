@@ -5,6 +5,7 @@ import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import { emailQueue } from "./lib/queue.ts";
+import { pool } from "./db.ts";
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/admin/queues");
@@ -16,6 +17,18 @@ createBullBoard({
 
 const app = express();
 app.use(express.json());
+app.use("/health", async (_req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Health check DB probe failed:", error);
+    res.status(503).json({ success: false });
+  }
+});
+
 app.use("/api/v1/events", eventRouter);
 app.use("/api/v1/notifications", notificationRouter);
 

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { ApiResponse, DeliveryLog, Event } from "@/types";
 import { LiveFeed } from "@/app/components/LiveFeed";
 
