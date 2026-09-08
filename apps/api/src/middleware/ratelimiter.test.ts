@@ -5,8 +5,11 @@ import { Redis } from "ioredis";
 
 const redis = new Redis();
 
-const makeReq = (ip: string) => {
-  return { socket: { remoteAddress: ip } } as unknown as Request;
+const makeReq = (project_id: string) => {
+  return {
+    project_id: project_id,
+    rate_limit_per_min: 5,
+  } as unknown as Request;
 };
 
 const makeRes = () => {
@@ -23,7 +26,7 @@ beforeEach(async () => {
 
 describe("rateLimiter", () => {
   it("allows 5 requests then blocks the 6th", async () => {
-    const req = makeReq("::1");
+    const req = makeReq("project-a");
     const next = vi.fn();
 
     for (let i = 0; i < 5; i++) {
@@ -38,7 +41,7 @@ describe("rateLimiter", () => {
   });
 
   it("Blocked responses carry the right headers", async () => {
-    const req = makeReq("::1");
+    const req = makeReq("project-a");
     const next = vi.fn();
     const res = makeRes();
 
@@ -53,7 +56,7 @@ describe("rateLimiter", () => {
   });
 
   it("Blocked Attempt don't consume quota", async () => {
-    const req = makeReq("::1");
+    const req = makeReq("project-a");
     const next = vi.fn();
     const res = makeRes();
 
@@ -69,16 +72,16 @@ describe("rateLimiter", () => {
       expect(res.status).toHaveBeenCalledWith(429);
     }
 
-    const count = await redis.zcard("ratelimit:::1");
+    const count = await redis.zcard("ratelimit:project:project-a");
 
     expect(count).toEqual(5);
   });
 
   it("Window slides after 60 sec", async () => {
-    vi.useFakeTimers()
+    vi.useFakeTimers();
 
     try {
-      const req = makeReq("::1");
+      const req = makeReq("project-a");
       const next = vi.fn();
       const res = makeRes();
 
@@ -87,19 +90,17 @@ describe("rateLimiter", () => {
         expect(next).toHaveBeenCalledTimes(i + 1);
       }
 
-      expect(await redis.zcard("ratelimit:::1")).toEqual(5)
+      expect(await redis.zcard("ratelimit:project:project-a")).toEqual(5);
 
       vi.setSystemTime(Date.now() + 61_000);
 
       await rateLimiter(req, res, next);
 
-      const count = await redis.zcard("ratelimit:::1");
+      const count = await redis.zcard("ratelimit:project:project-a");
 
-      expect(count).toEqual(1)
-
+      expect(count).toEqual(1);
     } finally {
-      vi.useRealTimers()
+      vi.useRealTimers();
     }
-
   });
 });

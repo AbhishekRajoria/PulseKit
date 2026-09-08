@@ -34,9 +34,10 @@ export const rateLimiter = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const ip = req.socket.remoteAddress;
+  const project_id = req.project_id;
+  const rate_limit_per_min = req.rate_limit_per_min;
 
-  const key = "ratelimit:" + ip;
+  const key = "ratelimit:project:" + project_id;
 
   const now = Date.now();
 
@@ -46,7 +47,7 @@ export const rateLimiter = async (
     key,
     now,
     60000,
-    5,
+    rate_limit_per_min ?? 5,
     member,
   );
 

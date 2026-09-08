@@ -7,7 +7,7 @@ export const apiKeyAuth = async (
   next: NextFunction,
 ) => {
   const bearer_key = req.headers.authorization;
-  
+
   let api_key = bearer_key?.split(" ")[1];
 
   // Dev fallback — skip auth check in development
@@ -16,7 +16,7 @@ export const apiKeyAuth = async (
   }
 
   const project = await pool.query(
-    `SELECT id from projects where api_key = $1`,
+    `SELECT id, rate_limit_per_min from projects where api_key = $1`,
     [api_key],
   );
 
@@ -29,6 +29,7 @@ export const apiKeyAuth = async (
   }
 
   req.project_id = project.rows[0].id;
+  req.rate_limit_per_min = project.rows[0].rate_limit_per_min;
 
   next();
 };

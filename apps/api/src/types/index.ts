@@ -31,6 +31,7 @@ declare global {
   namespace Express {
     interface Request {
       project_id: string;
+      rate_limit_per_min: number;
     }
   }
 }

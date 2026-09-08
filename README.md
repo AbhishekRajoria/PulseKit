@@ -31,7 +31,7 @@ Five tables plus a `channels` JSONB column on `projects`, ordered by foreign-key
 | Migration | Table | Purpose |
 |---|---|---|
 | `001_create_users.sql` | `users` | PulseKit account owners |
-| `002_create_projects.sql` | `projects` | A user's app(s), each with an `api_key` + `channels` config |
+| `002_create_projects.sql` | `projects` | A user's app(s), each with an `api_key` + `rate_limit_per_min` + `channels` config |
 | `003_create_events.sql` | `events` | Ingested events (`event_name`, `user_id`, `payload`) |
 | `004_create_delivery_logs.sql` | `delivery_logs` | **Append-only** — one row per delivery attempt, never updated |
 | `005_create_notifications.sql` | `notifications` | User-facing notification records |
@@ -59,7 +59,7 @@ Key design decisions:
 
 - **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
 - **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
-- **Rate limiting** — Post route is rate-limited by a Redis sliding-window limiter.
+- **Rate limiting** — the ingest route (`POST /events`) is limited per **project** (not per IP) by a Redis sliding-window limiter. The `apiKeyAuth` middleware resolves the project's `rate_limit_per_min` from the `projects` table and attaches it to the request; the limiter keys on `ratelimit:project:<project_id>`. Exceeding the quota returns `429` with a `Retry-After: 60` header, and **blocked requests consume no quota** (Lua script does the check-then-add atomically). The client owns retry. `rate_limited` as a delivery status belongs to the *delivery* side (provider throttling on send), not ingest.
 - **`GET /events` uses a LEFT JOIN** so events with no `delivery_logs` row yet (still `pending`) are visible with `status: null`.
 - **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
 - **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.

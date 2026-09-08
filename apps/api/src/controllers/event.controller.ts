@@ -38,7 +38,8 @@ export const createEvent = async (
   req: Request,
   res: Response<ApiResponse<Event>>,
 ) => {
-  const { event_name, user_id, payload } = req.body;
+  const { event_name, user_id } = req.body;
+  const payload = req.body.payload ?? {};
   const project_id = req.project_id;
 
   if (!event_name) {
