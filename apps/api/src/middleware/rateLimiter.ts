@@ -1,11 +1,9 @@
-import { Redis } from "ioredis";
 import { type Request, type Response, type NextFunction } from "express";
-
+import { redis } from "../lib/redis.ts";
 // READING LUA ATOMIC SCRIPT ON STARTUP
 import { readFileSync } from "node:fs";
-const script = readFileSync(new URL("./script.lua", import.meta.url), "utf8");
 
-const redis = new Redis();
+const script = readFileSync(new URL("./script.lua", import.meta.url), "utf8");
 
 declare module "ioredis" {
   interface Redis {
@@ -20,9 +18,6 @@ declare module "ioredis" {
   }
 }
 
-redis.on("error", (err) => {
-  console.error("Redis connection error:", err.message);
-});
 
 redis.defineCommand("slidingWindowLimit", {
   numberOfKeys: 1,

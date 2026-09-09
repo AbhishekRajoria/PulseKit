@@ -2,7 +2,6 @@ import { Queue, Worker } from "bullmq";
 import { Resend } from "resend";
 import { pool } from "../db.ts";
 import { redis } from "../lib/redis.ts";
-import { channel } from "node:diagnostics_channel";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
