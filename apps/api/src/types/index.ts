@@ -32,8 +32,14 @@ declare global {
     interface Request {
       project_id: string;
       rate_limit_per_min: number;
+      userId: string;
     }
   }
+}
+
+export interface PgError extends Error {
+  code: string;
+  detail?: string;
 }
 
 export type NotificationRow = {
@@ -43,5 +49,13 @@ export type NotificationRow = {
   title: string;
   body: string | null;
   read: boolean;
+  created_at: string;
+};
+
+export type User = {
+  id: string;
+  email: string;
+  password_hash: string;
+  name: string;
   created_at: string;
 };
