@@ -90,9 +90,10 @@ export const createEvent = async (
     });
   } catch (error) {
     console.error(error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return res.status(500).json({
       success: false,
-      error: `Failed to create event: ${(error as Error).message}`,
+      error: `Failed to create event: ${message}`,
       code: "DB_ERROR",
     });
   }

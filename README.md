@@ -45,6 +45,22 @@ Key design decisions:
 - **Canonical statuses:** `pending | delivered | failed | rate_limited | deduplicated`
 - **Channels are configured per project** (`channels` JSONB on `projects`) — which channels an event fans out to is the developer's config, not the sender's choice.
 
+### Dashboard auth (register / login / session)
+
+Dashboard (developer) accounts are protected by real email+password auth on the Express API:
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/auth/register` | None | Create an account (bcrypt-hashed password) |
+| `POST` | `/auth/login` | None | Verify credentials, set a signed session cookie |
+| `GET` | `/auth/me` | Cookie | Resolve the signed-in user |
+
+- Passwords are hashed with **bcrypt** (cost 10) before insert; `password_hash` is never returned by the API (`RETURNING` excludes it).
+- Login sets a **signed HTTP-only cookie** (`userId`) via `cookie-parser` + `COOKIE_SECRET` — `httpOnly` blocks XSS reads, `sameSite:'lax'` blocks cross-site CSRF sends, and the signature makes the cookie untamperable. Expires after 7 days.
+- The `authenticate` middleware reads `req.signedCookies.userId` → `req.userId` (rejects tampered/absent cookies) and guards protected routes.
+- Both "unknown email" and "wrong password" return the same `401 Invalid email or password` so attacker can't enumerate registered emails.
+- A signed cookie referencing a deleted user (orphan session) is cleared on `/auth/me` and returned as `401 Session expired`.
+
 ### Ingestion API (Express)
 
 | Method | Path | Auth | Purpose |
@@ -60,6 +76,7 @@ Key design decisions:
 - **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
 - **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
 - **Rate limiting** — the ingest route (`POST /events`) is limited per **project** (not per IP) by a Redis sliding-window limiter. The `apiKeyAuth` middleware resolves the project's `rate_limit_per_min` from the `projects` table and attaches it to the request; the limiter keys on `ratelimit:project:<project_id>`. Exceeding the quota returns `429` with a `Retry-After: 60` header, and **blocked requests consume no quota** (Lua script does the check-then-add atomically). The client owns retry. `rate_limited` as a delivery status belongs to the *delivery* side (provider throttling on send), not ingest.
+- **Single Redis source of truth** — all Redis consumers (`rateLimiter`, BullMQ `queue`, worker, WS subscriber) connect through the shared clients in `src/lib/redis.ts`, which read `process.env.REDIS_URL` (defaults to localhost in dev). No hardcoded connections; works as-is against a managed Redis on deploy.
 - **`GET /events` uses a LEFT JOIN** so events with no `delivery_logs` row yet (still `pending`) are visible with `status: null`.
 - **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
 - **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
@@ -84,7 +101,7 @@ App Router dashboard under `apps/web` with a `(dashboard)` route group. Server c
 | Layer | Tech |
 |---|---|
 | API | Node.js + Express + TypeScript |
-| API auth | Bearer API-key middleware, project-scoped |
+| API auth | Bearer API-key middleware (ingest), bcrypt password + signed cookie (dashboard) |
 | Database | PostgreSQL 18 (`gen_random_uuid()` built in) |
 | Cache / rate limit | Redis (ioredis) + Lua script |
 | Queue | BullMQ + Redis |
@@ -99,8 +116,17 @@ App Router dashboard under `apps/web` with a `(dashboard)` route group. Server c
 # API — needs Postgres + Redis
 cd apps/api
 npm install
-npm run dev   # serves on :8080, reads .env.local
+node --env-file=.env.local src/index.ts   # serves on :8080
 ```
+
+Seed the database **once** (one dev user + one project + dev API key so a fresh deploy isn't dead on arrival):
+
+```bash
+# from repo root — applies db/seed.sql to the local DB
+PGPASSWORD=pulse123 psql -U pulsedev -h localhost -d pulsedb -f apps/api/db/seed.sql
+```
+
+Credentials for the seed user live in `secret.txt` (gitignored).
 
 ```bash
 # Background email worker — separate process, reads the same .env.local
@@ -120,16 +146,18 @@ npm run dev   # serves on :3000
 ```
 apps/
   api/                 # Express API + BullMQ multi-channel worker
-    db/migrations/     # canonical schema (001–006)
+    db/
+      migrations/     # canonical schema (001–006)
+      seed.sql        # dev bootstrap: 1 user + 1 project + dev API key
     src/
-      controllers/     # event.controller, notification.controller
-      middleware/      # apiKeyAuth, rateLimiter
-      routes/          # event.routes.ts, notification.routes.ts
+      controllers/    # auth.controller, event.controller, notification.controller
+      middleware/     # apiKeyAuth, rateLimiter, authenticate (signed cookie)
+      routes/         # auth.routes.ts, event.routes.ts, notification.routes.ts
       lib/queue.ts     # BullMQ producer (email queue)
-      lib/redis.ts     # shared ioredis clients (general + subscriber)
+      lib/redis.ts     # shared ioredis clients (general + subscriber) — single REDIS_URL source
       lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
       workers/         # email.worker.ts: multi-channel fan-out (email/Slack/in-app) + per-channel isolation + pub/sub publish
-      types/           # EventRow, DeliveryRow, Event (joined), ApiResponse
+      types/           # EventRow, DeliveryRow, Event (joined), User, PgError, ApiResponse
       db.ts            # pg Pool
   web/                 # Next.js dashboard
     app/
