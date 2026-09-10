@@ -63,23 +63,44 @@ Dashboard (developer) accounts are protected by real email+password auth on the 
 
 ### Ingestion API (Express)
 
+**SDK routes** (server-to-server, authenticated via API key):
+
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `GET` | `/api/v1/events` | API key | List project's events (joined view) |
 | `POST` | `/api/v1/events` | API key | Ingest an event |
-| `GET` | `/api/v1/events/:id` | API key | Fetch one event with its delivery logs |
-| `GET` | `/api/v1/notifications/:userId` | API key | Fetch in-app notifications + unread count |
-| `PATCH` | `/api/v1/notifications/read-all` | API key | Mark all notifications as read for a user |
-| `PATCH` | `/api/v1/notifications/:id/read` | API key | Mark a notification as read |
+| `GET` | `/api/v1/notifications/:userId` | API key | Fetch in-app notifications + unread count for a user |
+
+**Dashboard routes** (browser, authenticated via signed cookie + project ownership check):
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `GET` | `/api/v1/events` | Cookie | List project's events (`?project_id=xxx`) |
+| `GET` | `/api/v1/events/:id` | Cookie | Fetch one event with its delivery logs (`?project_id=xxx`) |
+| `PATCH` | `/api/v1/notifications/read-all` | Cookie | Mark all notifications as read (`?project_id=xxx`) |
+| `PATCH` | `/api/v1/notifications/:id/read` | Cookie | Mark a notification as read (`?project_id=xxx`) |
+
+**Project management** (dashboard, all behind `authenticate`):
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/projects` | Create project + generate API key |
+| `GET` | `/api/v1/projects` | List user's projects |
+| `GET` | `/api/v1/projects/:id` | Get project details |
+| `PATCH` | `/api/v1/projects/:id` | Update project name / rate limit |
+| `DELETE` | `/api/v1/projects/:id` | Delete project (cascades) |
+| `POST` | `/api/v1/projects/:id/reveal-key` | Reveal API key (requires password) |
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
 | `GET` | `/health` | None | Liveness/readiness probe — pings Postgres (`SELECT 1`), 200 if reachable, 503 otherwise |
 
 - **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
-- **API-key auth middleware** (`apiKeyAuth`) — reads `Authorization: Bearer <api_key>`, resolves the `project_id` from the `projects` table, and attaches it to the request. All queries are scoped to that project.
-- **Rate limiting** — the ingest route (`POST /events`) is limited per **project** (not per IP) by a Redis sliding-window limiter. The `apiKeyAuth` middleware resolves the project's `rate_limit_per_min` from the `projects` table and attaches it to the request; the limiter keys on `ratelimit:project:<project_id>`. Exceeding the quota returns `429` with a `Retry-After: 60` header, and **blocked requests consume no quota** (Lua script does the check-then-add atomically). The client owns retry. `rate_limited` as a delivery status belongs to the *delivery* side (provider throttling on send), not ingest.
+- **Two auth layers** — SDK routes use `apiKeyAuth` (reads `Authorization: Bearer <api_key>`, resolves `project_id` from the `projects` table). Dashboard routes use `authenticate` (reads signed cookie → `req.userId`) + `project_id` from query param, with ownership verification (`WHERE user_id = $1 AND id = $2`).
+- **Rate limiting** — the ingest route (`POST /events`) is limited per **project** (not per IP) by a Redis sliding-window limiter (default 30 req/min, configurable 5–30 per project). The `apiKeyAuth` middleware resolves the project's `rate_limit_per_min` from the `projects` table and attaches it to the request; the limiter keys on `ratelimit:project:<project_id>`. Exceeding the quota returns `429` with a `Retry-After: 60` header, and **blocked requests consume no quota** (Lua script does the check-then-add atomically). The client owns retry. `rate_limited` as a delivery status belongs to the *delivery* side (provider throttling on send), not ingest.
 - **Single Redis source of truth** — all Redis consumers (`rateLimiter`, BullMQ `queue`, worker, WS subscriber) connect through the shared clients in `src/lib/redis.ts`, which read `process.env.REDIS_URL` (defaults to localhost in dev). No hardcoded connections; works as-is against a managed Redis on deploy.
 - **`GET /events` uses a LEFT JOIN** so events with no `delivery_logs` row yet (still `pending`) are visible with `status: null`.
 - **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
-- **Dev mode** — if no `api_key` is sent (e.g. the browser dashboard) and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key.
+- **Dev mode** — if no `api_key` is sent and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key (`dev_apikey_123`) for local testing.
 
 ### Async multi-channel delivery (BullMQ + Resend + Slack + in-app)
 
@@ -94,7 +115,7 @@ Dashboard (developer) accounts are protected by real email+password auth on the 
 
 ### Dashboard (Next.js)
 
-App Router dashboard under `apps/web` with a `(dashboard)` route group. Server components fetch the Express API directly (`/api/v1/events...` with a Bearer API key — server-side `fetch` needs absolute URLs; relative `/api` paths are client-only). The events list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). The **notifications page** (client component) fetches `GET /v1/notifications/:userId`, displays an inbox-style list with expand-to-read, mark-as-read, and mark-all-read. Client API routes (`/api/notifications/[id]/route.ts`, `/api/notifications/[id]/read/route.ts`, and `/api/notifications/read-all/route.ts`) proxy to Express. FE types mirror the API's snake_case + nested `logs` shape. The events list page is `force-dynamic` so `next build` skips prerendering the server-side fetch (build succeeds even when the API isn't running, and the page always serves fresh data).
+App Router dashboard under `apps/web` with a `(dashboard)` route group. Server pages (login, events, notifications) authenticate via the signed cookie and scope queries with `?project_id=` — API keys stay server-side with the SDK, never in the browser. The events list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). The **notifications page** (client component) shows an inbox-style list with expand-to-read, mark-as-read, and mark-all-read. FE types mirror the API's snake_case + nested `logs` shape. The events list page is `force-dynamic` so `next build` skips prerendering the server-side fetch (build succeeds even when the API isn't running, and the page always serves fresh data).
 
 ## Tech Stack
 
@@ -150,14 +171,14 @@ apps/
       migrations/     # canonical schema (001–006)
       seed.sql        # dev bootstrap: 1 user + 1 project + dev API key
     src/
-      controllers/    # auth.controller, event.controller, notification.controller
+      controllers/    # auth.controller, event.controller, notification.controller, project.controller
       middleware/     # apiKeyAuth, rateLimiter, authenticate (signed cookie)
-      routes/         # auth.routes.ts, event.routes.ts, notification.routes.ts
+      routes/         # auth.routes.ts, event.routes.ts, notification.routes.ts, project.routes.ts
       lib/queue.ts     # BullMQ producer (email queue)
       lib/redis.ts     # shared ioredis clients (general + subscriber) — single REDIS_URL source
       lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
       workers/         # email.worker.ts: multi-channel fan-out (email/Slack/in-app) + per-channel isolation + pub/sub publish
-      types/           # EventRow, DeliveryRow, Event (joined), User, PgError, ApiResponse
+      types/           # EventRow, DeliveryRow, User, Project, PgError, ApiResponse
       db.ts            # pg Pool
   web/                 # Next.js dashboard
     app/
