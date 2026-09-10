@@ -3,6 +3,6 @@ CREATE TABLE projects (
   user_id            UUID REFERENCES users(id) ON DELETE CASCADE,
   name               TEXT NOT NULL,
   api_key            TEXT UNIQUE NOT NULL,
-  rate_limit_per_min INT NOT NULL DEFAULT 100,
+  rate_limit_per_min INT NOT NULL DEFAULT 30,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
