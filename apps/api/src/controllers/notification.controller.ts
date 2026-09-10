@@ -52,23 +52,36 @@ export const markAllRead = async (
   req: Request,
   res: Response<ApiResponse<{ count: number }>>,
 ) => {
-  const project_id = req.project_id;
-  const { userId } = req.body ?? {};
+  const user_id = req.userId;
+  const project_id = req.query.project_id as string;
 
-  if (!userId) {
+  if (!project_id) {
     return res.status(400).json({
       success: false,
-      error: "userId is required.",
-      code: "BAD_REQUEST",
+      error: "Missing required field: project_id",
+      code: "MISSING_FIELD",
     });
   }
 
   try {
+    const ownership = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND user_id = $2`,
+      [project_id, user_id],
+    );
+
+    if (ownership.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Project not found",
+        code: "NOT_FOUND",
+      });
+    }
+
     const result = await pool.query(
       `UPDATE notifications
       SET read = true
       WHERE project_id = $1 AND user_id = $2 AND read = false`,
-      [project_id, userId],
+      [project_id, user_id],
     );
 
     return res.json({
@@ -89,10 +102,32 @@ export const markAsRead = async (
   req: Request,
   res: Response<ApiResponse<NotificationRow>>,
 ) => {
-  const project_id = req.project_id;
+  const user_id = req.userId;
+  const project_id = req.query.project_id as string;
   const id = req.params.id;
 
+  if (!project_id) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing required field: project_id",
+      code: "MISSING_FIELD",
+    });
+  }
+
   try {
+    const ownership = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND user_id = $2`,
+      [project_id, user_id],
+    );
+
+    if (ownership.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Project not found",
+        code: "NOT_FOUND",
+      });
+    }
+
     const result = await pool.query(
       `UPDATE notifications
       SET read = true

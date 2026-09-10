@@ -5,11 +5,12 @@ import {
   markAllRead,
   markAsRead,
 } from "../controllers/notification.controller.ts";
+import { authenticate } from "../middleware/authenticate.ts";
 
 const router = Router();
 
-router.patch("/read-all", apiKeyAuth, markAllRead);
 router.get("/:userId", apiKeyAuth, getNotifications);
-router.patch("/:id/read", apiKeyAuth, markAsRead);
+router.patch("/read-all", authenticate, markAllRead);
+router.patch("/:id/read", authenticate, markAsRead);
 
 export default router;

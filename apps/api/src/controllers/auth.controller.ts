@@ -13,7 +13,7 @@ export const register = async (
     if (!email) {
       return res.status(400).json({
         success: false,
-        error: "Missing required field: email ",
+        error: "Missing required field: email",
         code: "MISSING_FIELD",
       });
     }
@@ -21,7 +21,7 @@ export const register = async (
     if (!password) {
       return res.status(400).json({
         success: false,
-        error: "Missing required field: password ",
+        error: "Missing required field: password",
         code: "MISSING_FIELD",
       });
     }
