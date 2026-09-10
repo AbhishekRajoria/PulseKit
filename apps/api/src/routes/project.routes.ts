@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { rateLimiter } from "../middleware/rateLimiter.ts";
 import {
   createProject,
   deleteProject,
@@ -14,8 +13,8 @@ const router = Router();
 router.get("/", getProjects);
 router.post("/", createProject);
 router.get("/:id", getProjectById);
-router.put("/:id", updateProject);
+router.patch("/:id", updateProject);
 router.delete("/:id", deleteProject);
-router.get("/:id", revealApiKey);
+router.post("/:id/reveal-key", revealApiKey);
 
 export default router;
