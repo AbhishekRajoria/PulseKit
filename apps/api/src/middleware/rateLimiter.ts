@@ -50,7 +50,7 @@ export const rateLimiter = async (
     return res
       .status(429)
       .set("Retry-After", "60")
-      .json({ error: "Too many requests" });
+      .json({ success: false, error: "Too many requests" });
   }
   next();
 };
