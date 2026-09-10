@@ -3,6 +3,7 @@ import express from "express";
 import eventRouter from "./routes/event.routes.ts";
 import notificationRouter from "./routes/notification.routes.ts";
 import authRouter from "./routes/auth.routes.ts";
+import projectRouter from "./routes/project.routes.ts";
 
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
@@ -11,6 +12,7 @@ import { emailQueue } from "./lib/queue.ts";
 import { pool } from "./db.ts";
 
 import cookieParser from "cookie-parser";
+import { authenticate } from "./middleware/authenticate.ts";
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/admin/queues");
@@ -40,6 +42,8 @@ app.use("/health", async (_req, res) => {
 app.use("/auth", authRouter);
 
 app.use("/api/v1/events", eventRouter);
+
+app.use("/api/v1/projects", authenticate, projectRouter);
 
 app.use("/api/v1/notifications", notificationRouter);
 

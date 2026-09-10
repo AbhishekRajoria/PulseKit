@@ -18,8 +18,6 @@ export type DeliveryRow = {
   delivered_at: string;
 };
 
-export type Event = EventRow & Pick<DeliveryRow, "status" | "channel">;
-
 export type ApiResponse<T> = {
   success: boolean;
   data?: T;
@@ -57,5 +55,14 @@ export type User = {
   email: string;
   password_hash: string;
   name: string;
+  created_at: string;
+};
+
+export type Project = {
+  id: string;
+  user_id: string;
+  name: string;
+  api_key: string;
+  rate_limit_per_min: number;
   created_at: string;
 };
