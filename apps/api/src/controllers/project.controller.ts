@@ -31,10 +31,15 @@ export const createProject = async (
 
     const api_key = `pk_test_${crypto.randomUUID()}`;
 
+    const hasRateLimit = rate_limit_per_min !== undefined;
     const result = await pool.query(
-      `INSERT INTO projects (user_id, name, api_key, rate_limit_per_min)
-    VALUES( $1, $2, $3, $4 ) RETURNING id, user_id, name, api_key, rate_limit_per_min, created_at`,
-      [user_id, name, api_key, rate_limit_per_min],
+      `INSERT INTO projects (user_id, name, api_key${
+        hasRateLimit ? ", rate_limit_per_min" : ""
+      })
+    VALUES( $1, $2, $3${hasRateLimit ? ", $4" : ""} ) RETURNING id, user_id, name, api_key, rate_limit_per_min, created_at`,
+      hasRateLimit
+        ? [user_id, name, api_key, rate_limit_per_min]
+        : [user_id, name, api_key],
     );
 
     return res.status(201).json({
