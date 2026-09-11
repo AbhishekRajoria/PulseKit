@@ -31,7 +31,7 @@ playwright-report/
 practice.*
 
 # Learning notes
-projects/
+/projects/
 
 # Secrets
 secret.txt

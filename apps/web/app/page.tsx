@@ -16,7 +16,7 @@ export default function Home() {
         </p>
         <div className="mt-9 flex justify-center gap-4">
           <Link
-            href="/events"
+            href="/login"
             className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
           >
             View Events

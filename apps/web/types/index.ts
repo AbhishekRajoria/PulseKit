@@ -29,6 +29,14 @@ export type Notification = {
   created_at: string;
 };
 
+export type Project = {
+  id: string;
+  user_id: string;
+  name: string;
+  rate_limit_per_min: number;
+  created_at: string;
+};
+
 export type NotificationsResponse = {
   notifications: Notification[];
   unread_count: number;
@@ -39,4 +47,10 @@ export type ApiResponse<T> = {
   data?: T;
   error?: string;
   code?: string;
+};
+
+export type ActionResponse<T> = {
+  data: T | Record<string, unknown>;
+  success: boolean;
+  error?: string;
 };

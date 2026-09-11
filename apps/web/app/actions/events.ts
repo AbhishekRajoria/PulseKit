@@ -1,10 +1,6 @@
 "use server";
 
-type ActionResponse<T> = {
-  data: T | Record<string, unknown>;
-  success: boolean;
-  error?: string;
-};
+import { ActionResponse } from "@/types";
 
 export async function submitForm(
   formData: FormData,
