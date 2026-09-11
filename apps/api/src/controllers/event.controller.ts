@@ -95,7 +95,6 @@ export const notify = async (
         user_id,
         event_name,
         payload,
-        to: "abhishekrajoria24@gmail.com",
       },
       {
         attempts: 5,

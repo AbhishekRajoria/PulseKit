@@ -25,7 +25,7 @@ const worker = new Worker(
         // send email via Resend
         const { error } = await resend.emails.send({
           from: "onboarding@resend.dev",
-          to: job.data.to,
+          to: channels.email.to,
           subject: `New event: ${job.data.event_name}`,
           html: `<p>${job.data.event_name} for user ${job.data.user_id}</p>`,
         });
