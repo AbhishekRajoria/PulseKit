@@ -53,6 +53,7 @@ Dashboard (developer) accounts are protected by real email+password auth on the 
 |---|---|---|---|
 | `POST` | `/auth/register` | None | Create an account (bcrypt-hashed password) |
 | `POST` | `/auth/login` | None | Verify credentials, set a signed session cookie |
+| `POST` | `/auth/logout` | Cookie | Clear the signed session cookie |
 | `GET` | `/auth/me` | Cookie | Resolve the signed-in user |
 
 - Passwords are hashed with **bcrypt** (cost 10) before insert; `password_hash` is never returned by the API (`RETURNING` excludes it).
@@ -78,6 +79,9 @@ Dashboard (developer) accounts are protected by real email+password auth on the 
 | `GET` | `/api/v1/events/:id` | Cookie | Fetch one event with its delivery logs (`?project_id=xxx`) |
 | `PATCH` | `/api/v1/notifications/read-all` | Cookie | Mark all notifications as read (`?project_id=xxx`) |
 | `PATCH` | `/api/v1/notifications/:id/read` | Cookie | Mark a notification as read (`?project_id=xxx`) |
+| `GET` | `/api/v1/notifications/users` | Cookie | List distinct users for a project's notifications (`?project_id=xxx`) |
+| `GET` | `/api/v1/notifications/project/:projectId/user/:userId` | Cookie | Fetch notifications for one user within a project |
+| `GET` | `/api/v1/projects/:id/stats` | Cookie | Aggregate stats for a project (events, users, unread count) |
 
 **Project management** (dashboard, all behind `authenticate`):
 
@@ -115,7 +119,15 @@ Dashboard (developer) accounts are protected by real email+password auth on the 
 
 ### Dashboard (Next.js)
 
-App Router dashboard under `apps/web` with a `(dashboard)` route group. Server pages (login, events, notifications) authenticate via the signed cookie and scope queries with `?project_id=` — API keys stay server-side with the SDK, never in the browser. The events list page shows each event's latest delivery attempt (status/channel) with a delivery count; the detail page renders the full nested `logs` table (channel, status, attempt, error, delivered time). The **notifications page** (client component) shows an inbox-style list with expand-to-read, mark-as-read, and mark-all-read. FE types mirror the API's snake_case + nested `logs` shape. The events list page is `force-dynamic` so `next build` skips prerendering the server-side fetch (build succeeds even when the API isn't running, and the page always serves fresh data).
+App Router dashboard under `apps/web` with a `(dashboard)` route group — themed with an **instrument-grade light** palette (white-dominant, ink scale, emerald `pulse` accent, Inter + JetBrains Mono). Server pages authenticate via the signed cookie and scope queries with `?project_id=` — API keys stay server-side with the SDK, never in the browser.
+
+**Projects page** — cards show live aggregate stats per project (event count, distinct users, unread notifications, time since last event) via `GET /api/v1/projects/:id/stats`. A **modal** form (`CreateProjectForm`) creates new projects with name + a rate-limit preset selector (5–30 req/min in steps of 5).
+
+**Project detail** — quick-look stat cards show events and unread counts from the same stats endpoint; event list and live feed scoped to that project.
+
+**Notifications** — moved to `projects/[id]/notifications` (per-project, user-pill selector with unread badges, mark-read / mark-all-read). The old flat `/notifications` page redirects to `/projects`.
+
+**Sidebar** — collapsed icon-only nav on desktop (toggle button on the sidebar edge), full-width on mobile; all icons always visible; Log out button at the bottom.
 
 ## Tech Stack
 
@@ -180,16 +192,21 @@ apps/
       workers/         # email.worker.ts: multi-channel fan-out (email/Slack/in-app) + per-channel isolation + pub/sub publish
       types/           # EventRow, DeliveryRow, User, Project, PgError, ApiResponse
       db.ts            # pg Pool
-  web/                 # Next.js dashboard
+  web/                 # Next.js dashboard (Themed: instrument-grade light, Tailwind v4)
+    DESIGN-PLAN.md    # design spec + phased UI rollout
     app/
-      (dashboard)/     # route group — shared layout + sidebar
+      (dashboard)/     # route group — shared layout + sidebar + global .card/.pill/.mono-data tokens
         components/
           Sidebar.tsx  # collapsible nav (icon-only desktop, overlay mobile)
-        events/        # list + detail pages
-        notifications/ # inbox page (client component)
+        projects/
+          create-form.tsx  # modal — name + rate-limit preset pills
+          [id]/notifications/  # per-project inbox (user pills, unread badges, mark-read)
       api/notifications/  # proxy routes to Express
       components/
-        LiveFeed.tsx   # live delivery feed (client WebSocket)
+        EventsList.tsx  # project-scoped event list
+        LiveFeed.tsx    # live delivery feed (client WebSocket)
+        PayloadBlock.tsx # JSON payload display
+    lib/format.ts       # shared utilities (timeAgo, etc.)
 ```
 
 ## Roadmap
