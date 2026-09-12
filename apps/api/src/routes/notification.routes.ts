@@ -3,6 +3,8 @@ import { apiKeyAuth } from "../middleware/apiKeyAuth.ts";
 import { rateLimiter } from "../middleware/rateLimiter.ts";
 import {
   getNotifications,
+  getNotificationsByProject,
+  getUsersByProject,
   markAllRead,
   markAsRead,
 } from "../controllers/notification.controller.ts";
@@ -10,6 +12,8 @@ import { authenticate } from "../middleware/authenticate.ts";
 
 const router = Router();
 
+router.get("/users", authenticate, getUsersByProject);
+router.get("/project/:projectId/user/:userId", authenticate, getNotificationsByProject);
 router.get("/:userId", apiKeyAuth, rateLimiter, getNotifications);
 router.patch("/read-all", authenticate, markAllRead);
 router.patch("/:id/read", authenticate, markAsRead);

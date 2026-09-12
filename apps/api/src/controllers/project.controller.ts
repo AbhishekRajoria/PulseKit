@@ -96,6 +96,58 @@ export const getProjects = async (
   }
 };
 
+export const getProjectStats = async (
+  req: Request,
+  res: Response<
+    ApiResponse<{
+      event_count: number;
+      notification_count: number;
+      unread_count: number;
+      last_event_at: string | null;
+      unique_users: number;
+    }>
+  >,
+) => {
+  try {
+    const user_id = req.userId;
+    const { id } = req.params;
+
+    const ownership = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND user_id = $2`,
+      [id, user_id],
+    );
+
+    if (ownership.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Project ${id} doesn't exist`,
+        code: "NOT_FOUND",
+      });
+    }
+
+    const stats = await pool.query(
+      `SELECT
+        (SELECT COUNT(*)::int FROM events WHERE project_id = $1) AS event_count,
+        (SELECT COUNT(*)::int FROM notifications WHERE project_id = $1) AS notification_count,
+        (SELECT COUNT(*)::int FROM notifications WHERE project_id = $1 AND read = false) AS unread_count,
+        (SELECT MAX(received_at) FROM events WHERE project_id = $1) AS last_event_at,
+        (SELECT COUNT(DISTINCT user_id)::int FROM events WHERE project_id = $1) AS unique_users`,
+      [id],
+    );
+
+    return res.json({
+      success: true,
+      data: stats.rows[0],
+    });
+  } catch (error) {
+    console.error("Failed to fetch project stats:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch project stats",
+    });
+  }
+};
+
 export const getProjectById = async (
   req: Request,
   res: Response<ApiResponse<Project>>,

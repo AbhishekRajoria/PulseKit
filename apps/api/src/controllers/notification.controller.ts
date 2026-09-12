@@ -7,6 +7,75 @@ type NotificationResponse = {
   unread_count: number;
 };
 
+type UserWithNotifications = {
+  user_id: string;
+  unread_count: number;
+  last_notification_at: string;
+};
+
+export const getUsersByProject = async (
+  req: Request,
+  res: Response<ApiResponse<UserWithNotifications[]>>,
+) => {
+  const user_id = req.userId;
+  const project_id = req.query.project_id as string;
+
+  if (!project_id) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing required field: project_id",
+      code: "MISSING_FIELD",
+    });
+  }
+
+  try {
+    const ownership = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND user_id = $2`,
+      [project_id, user_id],
+    );
+
+    if (ownership.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Project not found",
+        code: "NOT_FOUND",
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT
+        user_id,
+        COUNT(*) FILTER (WHERE read = false)::int AS unread_count,
+        MAX(created_at) AS last_notification_at
+      FROM notifications
+      WHERE project_id = $1
+      GROUP BY user_id
+      ORDER BY last_notification_at DESC`,
+      [project_id],
+    );
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch users.",
+      code: "DB_ERROR",
+    });
+  }
+};
+
+export const getNotificationsByProject = async (
+  req: Request,
+  res: Response<ApiResponse<NotificationResponse>>,
+) => {
+  req.project_id = req.params.projectId as string;
+  return getNotifications(req, res);
+};
+
 export const getNotifications = async (
   req: Request,
   res: Response<ApiResponse<NotificationResponse>>,

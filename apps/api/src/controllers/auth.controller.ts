@@ -124,6 +124,17 @@ export const login = async (
   }
 };
 
+export const logout = async (
+  _req: Request,
+  res: Response<ApiResponse<null>>,
+) => {
+  res.clearCookie("userId");
+  return res.json({
+    success: true,
+    data: null,
+  });
+};
+
 export const getMe = async (
   req: Request,
   res: Response<ApiResponse<Omit<User, "password_hash">>>,
