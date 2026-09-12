@@ -12,6 +12,15 @@ export async function createProject(
     return { error: "Project name is required" };
   }
 
+  const rawRate = formData.get("rate_limit_per_min");
+  let rate_limit_per_min: number | undefined;
+  if (rawRate && rawRate !== "") {
+    rate_limit_per_min = Number(rawRate);
+    if (Number.isNaN(rate_limit_per_min) || rate_limit_per_min < 5 || rate_limit_per_min > 30) {
+      return { error: "Rate limit must be between 5 and 30 requests/min" };
+    }
+  }
+
   const cookieStore = await cookies();
   const cookie = cookieStore.get("userId")?.value;
 
@@ -21,7 +30,11 @@ export async function createProject(
       "Content-Type": "application/json",
       ...(cookie ? { Cookie: `userId=${cookie}` } : {}),
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(
+      rate_limit_per_min !== undefined
+        ? { name, rate_limit_per_min }
+        : { name },
+    ),
   });
 
   const data = await res.json();

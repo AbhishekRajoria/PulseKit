@@ -37,6 +37,14 @@ export type Project = {
   created_at: string;
 };
 
+export type ProjectStats = {
+  event_count: number;
+  notification_count: number;
+  unread_count: number;
+  last_event_at: string | null;
+  unique_users: number;
+};
+
 export type NotificationsResponse = {
   notifications: Notification[];
   unread_count: number;

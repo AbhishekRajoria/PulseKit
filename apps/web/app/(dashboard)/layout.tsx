@@ -11,7 +11,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-canvas">
       <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((p) => !p)} />
 
       {/* Mobile hamburger */}
