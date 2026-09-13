@@ -29,6 +29,18 @@ export const createProject = async (
       });
     }
 
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS COUNT FROM projects WHERE user_id=$1`,
+      [user_id],
+    );
+
+    if (countRes.rows[0].count >= 5) {
+      return res.status(409).json({
+        success: false,
+        error: "Project limit reached. Maximum 5 projects per account.",
+      });
+    }
+
     const api_key = `pk_test_${crypto.randomUUID()}`;
 
     const hasRateLimit = rate_limit_per_min !== undefined;
