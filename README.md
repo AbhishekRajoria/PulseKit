@@ -174,6 +174,20 @@ npm install
 npm run dev   # serves on :3000
 ```
 
+### Integration tests
+
+The API's integration tests run against a **dedicated `pulsedb_test` database** (never the dev `pulsedb`) — supertest drives the real Express app through real Postgres + Redis, so every suite exercises the production code path with zero test-only code in `src/`.
+
+```bash
+# prerequisites: pulsedb_test exists, migrations applied (001–006), Postgres + Redis running
+cd apps/api
+npm test   # vitest — runs src/**/*.integration.test.ts only; unit tests in src/ run too
+```
+
+- Environment comes from `.env.test` (loaded via `vitest.env.ts`), pointing `DATABASE_URL` at `pulsedb_test`.
+- `vitest.setup.ts` refuses to run unless the connected DB ends in `_test`, and truncates all tables between tests.
+- `COOKIE_SECRET` for the test env lives in `.env.test` (gitignored).
+
 ## Code layout
 
 ```
