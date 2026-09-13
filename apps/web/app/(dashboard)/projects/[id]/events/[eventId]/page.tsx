@@ -103,37 +103,54 @@ export default async function ProjectEventDetailPage({
       </div>
 
       {/* Delivery logs */}
-      {event.logs.length > 0 && (
-        <div className="mt-8">
-          <div className="mb-3 flex items-center gap-2">
-            <p className="text-[11px] font-medium text-ink-3">Delivery log</p>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink-4">
-              {event.logs.length}
-            </span>
-          </div>
-          <div className="card overflow-hidden">
+      <div className="mt-8">
+        <div className="mb-3 flex items-center gap-2">
+          <p className="text-[11px] font-medium text-ink-3">Delivery log</p>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink-4">
+            {event.logs.length}
+          </span>
+        </div>
+        <div className="card overflow-hidden">
+          {event.logs.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">Channel</th>
-                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">Status</th>
-                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">Attempt</th>
-                    <th className="hidden px-5 py-3 text-[11px] font-medium text-ink-3 sm:table-cell">Error</th>
-                    <th className="hidden px-5 py-3 text-[11px] font-medium text-ink-3 md:table-cell">Delivered</th>
+                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">
+                      Channel
+                    </th>
+                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">
+                      Status
+                    </th>
+                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">
+                      Attempt
+                    </th>
+                    <th className="hidden px-5 py-3 text-[11px] font-medium text-ink-3 sm:table-cell">
+                      Error
+                    </th>
+                    <th className="hidden px-5 py-3 text-[11px] font-medium text-ink-3 md:table-cell">
+                      Delivered
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {event.logs.map((log) => (
-                    <tr key={log.id} className="transition-colors hover:bg-gray-50/80">
+                    <tr
+                      key={log.id}
+                      className="transition-colors hover:bg-gray-50/80"
+                    >
                       <td className="px-5 py-3">
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink-4 capitalize">
                           {log.channel}
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusText[log.status] ?? "text-ink-4"}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${statusDot[log.status] ?? "bg-ink-4"}`} />
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusText[log.status] ?? "text-ink-4"}`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${statusDot[log.status] ?? "bg-ink-4"}`}
+                          />
                           {log.status}
                         </span>
                       </td>
@@ -156,9 +173,19 @@ export default async function ProjectEventDetailPage({
                 </tbody>
               </table>
             </div>
-          </div>
+          ) : (
+            <div className="px-5 py-10 text-center">
+              <p className="text-sm font-medium text-ink">
+                No delivery attempts yet
+              </p>
+              <p className="mt-1 text-xs text-ink-4">
+                The worker will log delivery here shortly after the event is
+                processed.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
