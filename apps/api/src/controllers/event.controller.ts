@@ -61,6 +61,7 @@ export const notify = async (
   res: Response<ApiResponse<EventRow>>,
 ) => {
   const { event_name, user_id } = req.body;
+  const to = req.body.to;
   const payload = req.body.payload ?? {};
   const project_id = req.project_id;
 
@@ -95,6 +96,7 @@ export const notify = async (
         user_id,
         event_name,
         payload,
+        to,
       },
       {
         attempts: 5,
