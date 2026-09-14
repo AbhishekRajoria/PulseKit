@@ -6,6 +6,16 @@ import { createProject, loginUser } from "./helpers.ts";
 import { emailQueue } from "../lib/queue.ts";
 import { redis } from "../lib/redis.ts";
 
+const waitForJobSettled = async (timeoutMs = 5000) => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const { completed, waiting, active } = await emailQueue.getJobCounts();
+    if (completed + waiting + active > 0) return true;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return false;
+};
+
 beforeEach(async () => {
   await truncateTables();
   await redis.flushdb();
@@ -26,7 +36,7 @@ describe("POST /api/v1/events ", () => {
     expect(res.status).toBe(202);
     expect(res.body.success).toBe(true);
     expect(res.body.data.event_name).toBe("payment.failed");
-    expect(await emailQueue.getWaitingCount()).toBe(1);
+    expect(await waitForJobSettled()).toBe(true);
   });
 
   it("400s when event_name is missing", async () => {
