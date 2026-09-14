@@ -2,7 +2,7 @@
 import { Resend } from "resend";
 import { pool } from "../db.ts";
 import { redis } from "../lib/redis.ts";
-import { renderEventEmail } from "../lib/emailTemplate.ts";
+import { renderEventEmail, sentenceCase } from "../lib/emailTemplate.ts";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -28,7 +28,7 @@ const worker = new Worker(
         const { error } = await resend.emails.send({
           from: "onboarding@resend.dev",
           to: job.data.to ?? channels.email.to,
-          subject: `New event: ${job.data.event_name}`,
+          subject: `${projectName} · ${sentenceCase(job.data.event_name)}`,
           html: renderEventEmail({
             projectName,
             eventName: job.data.event_name,

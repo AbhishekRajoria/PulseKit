@@ -18,8 +18,8 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-// "payment.failed" -> "Payment failed"; "apiKey" -> "Api key"
-const sentenceCase = (value: string): string => {
+// "payment.failed" -> "Payment failed"; "apiKey" -> "Api key"; "insufficient_funds" -> "Insufficient funds"
+export const sentenceCase = (value: string): string => {
   const words = value
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .split(/[_\-\s.]+/)
@@ -38,7 +38,7 @@ const titleCase = (value: string): string =>
 
 // turn arbitrary payload values into something a person can read:
 // booleans -> Yes/No, null -> "—", nested objects collapse to a count
-// instead of dumping raw JSON
+// instead of dumping raw JSON; snake_case/camelCase strings get humanized
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -48,6 +48,11 @@ const formatValue = (value: unknown): string => {
     return `${Object.keys(value).length} field${
       Object.keys(value).length === 1 ? "" : "s"
     }`;
+  if (typeof value === "string") {
+    if (value.includes("_") || /([a-z])([A-Z])/.test(value))
+      return sentenceCase(value);
+    return value;
+  }
   return String(value);
 };
 
@@ -76,8 +81,8 @@ export const renderEventEmail = ({
     .map(
       ([key, value]) => `
         <tr>
-          <td style="padding:10px 0;border-top:1px solid #f1f5f9;">
-            <div style="font-size:12px;color:#94a3b8;">${escapeHtml(
+          <td style="padding:14px 18px;border-top:1px solid #f1f5f9;">
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">${escapeHtml(
               titleCase(key),
             )}</div>
             <div style="font-size:14px;color:#1e293b;line-height:1.5;word-break:break-word;">${escapeHtml(
@@ -95,7 +100,7 @@ export const renderEventEmail = ({
         (hiddenCount > 0
           ? `
         <tr>
-          <td style="padding:10px 0;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">+ ${hiddenCount} more</td>
+          <td style="padding:10px 18px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">+ ${hiddenCount} more</td>
         </tr>`
           : "");
 
@@ -153,7 +158,7 @@ export const renderEventEmail = ({
           <td style="padding:0 28px 28px 28px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;">
               <tr>
-                <td style="background:#f8fafc;padding:8px 14px;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Details</td>
+                <td style="background:#f8fafc;padding:10px 18px;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Details</td>
               </tr>
               ${payloadHtml}
             </table>
