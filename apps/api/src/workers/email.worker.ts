@@ -33,6 +33,7 @@ const worker = new Worker(
             projectName,
             eventName: job.data.event_name,
             userId: job.data.user_id,
+            userName: job.data.user_name,
             payload: job.data.payload ?? {},
             sentAt: new Date(),
           }),

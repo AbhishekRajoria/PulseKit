@@ -62,6 +62,8 @@ export const notify = async (
 ) => {
   const { event_name, user_id } = req.body;
   const to = req.body.to;
+  const user_name =
+    typeof req.body.user_name === "string" ? req.body.user_name : undefined;
   const payload = req.body.payload ?? {};
   const project_id = req.project_id;
 
@@ -97,6 +99,7 @@ export const notify = async (
         event_name,
         payload,
         to,
+        user_name,
       },
       {
         attempts: 5,
