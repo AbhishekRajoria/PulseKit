@@ -181,11 +181,12 @@ The API's integration tests run against a **dedicated `pulsedb_test` database** 
 ```bash
 # prerequisites: pulsedb_test exists, migrations applied (001–006), Postgres + Redis running
 cd apps/api
-npm test   # vitest — runs src/**/*.integration.test.ts only; unit tests in src/ run too
+npm test   # vitest — runs src/**/*.integration.test.ts only
 ```
 
 - Environment comes from `.env.test` (loaded via `vitest.env.ts`), pointing `DATABASE_URL` at `pulsedb_test`.
 - `vitest.setup.ts` refuses to run unless the connected DB ends in `_test`, and truncates all tables between tests.
+- Suites run **serially** (`fileParallelism: false`) — every suite truncates the same shared `pulsedb_test`, so files must not run in parallel.
 - `COOKIE_SECRET` for the test env lives in `.env.test` (gitignored).
 
 ## Code layout
