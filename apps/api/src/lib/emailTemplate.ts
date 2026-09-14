@@ -18,12 +18,43 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+// "payment.failed" -> "Payment failed"; "apiKey" -> "Api key"
+const sentenceCase = (value: string): string => {
+  const words = value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[_\-\s.]+/)
+    .filter(Boolean);
+  if (words.length === 0) return value;
+  const joined = words.join(" ").toLowerCase();
+  return joined.charAt(0).toUpperCase() + joined.slice(1);
+};
+
+// "decline_reason" -> "Decline Reason"
+const titleCase = (value: string): string =>
+  sentenceCase(value)
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+// turn arbitrary payload values into something a person can read:
+// booleans -> Yes/No, null -> "—", nested objects collapse to a count
+// instead of dumping raw JSON
+const formatValue = (value: unknown): string => {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value))
+    return `${value.length} item${value.length === 1 ? "" : "s"}`;
+  if (typeof value === "object")
+    return `${Object.keys(value).length} field${
+      Object.keys(value).length === 1 ? "" : "s"
+    }`;
+  return String(value);
+};
+
 // email clients strip <style> blocks and <link> stylesheets — every style
 // must be inline on the element itself
 const FONT =
   "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-const MONO =
-  "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
 export const renderEventEmail = ({
   projectName,
@@ -33,36 +64,53 @@ export const renderEventEmail = ({
   payload,
   sentAt,
 }: EventEmailData): string => {
-  const timestamp =
-    sentAt.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const sent =
+    sentAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+
+  const entries = Object.entries(payload);
+  const MAX_ROWS = 10;
+  const visible = entries.slice(0, MAX_ROWS);
+  const hiddenCount = entries.length - visible.length;
+
+  const payloadRows = visible
+    .map(
+      ([key, value]) => `
+        <tr>
+          <td style="padding:10px 0;border-top:1px solid #f1f5f9;">
+            <div style="font-size:12px;color:#94a3b8;">${escapeHtml(
+              titleCase(key),
+            )}</div>
+            <div style="font-size:14px;color:#1e293b;line-height:1.5;word-break:break-word;">${escapeHtml(
+              formatValue(value),
+            )}</div>
+          </td>
+        </tr>`,
+    )
+    .join("");
 
   const payloadHtml =
-    Object.keys(payload).length === 0
-      ? `<div style="color:#94a3b8;font-family:${MONO};font-size:13px;padding:12px 16px;">no details</div>`
-      : `<pre style="background:#0f172a;color:#e2e8f0;font-family:${MONO};font-size:13px;line-height:1.6;border-radius:8px;padding:16px;margin:0;white-space:pre-wrap;word-break:break-word;">${escapeHtml(
-          JSON.stringify(payload, null, 2),
-        )}</pre>`;
+    payloadRows === ""
+      ? `<div style="font-size:14px;color:#94a3b8;padding:12px 0;">No additional details</div>`
+      : payloadRows +
+        (hiddenCount > 0
+          ? `
+        <tr>
+          <td style="padding:10px 0;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">+ ${hiddenCount} more</td>
+        </tr>`
+          : "");
 
   // greeting fires only when the sender supplied a user_name — the end
-  // recipient is a human, "user_44" means nothing to them
+  // recipient is a human, so we address them by name when possible
   const greeting = userName
     ? `<div style="font-size:16px;color:#334155;margin-bottom:10px;">Hi ${escapeHtml(
         userName,
       )},</div>`
     : "";
 
-  // a named user gets "For: Her Name" in a human font; without a name the raw
-  // developer-side id stays but is framed as a neutral "reference", never
-  // "user user_44"
-  const who = userName
-    ? `<td style="padding-right:8px;">For</td>
-       <td style="padding-right:24px;color:#334155;font-weight:600;">${escapeHtml(
-         userName,
-       )}</td>`
-    : `<td style="padding-right:8px;">reference</td>
-       <td style="padding-right:24px;font-family:${MONO};color:#334155;">${escapeHtml(
-         userId,
-       )}</td>`;
+  // "user_44" is the developer's internal identifier, meaningless to the
+  // person reading this — it never appears; the recipient is shown a name
+  // when the sender provides one
+  void userId;
 
   // table wrapper = widest email-client compatibility (nested tables are evil
   // in Outlook; one outer table is fine)
@@ -76,7 +124,7 @@ export const renderEventEmail = ({
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="font-size:13px;font-weight:600;letter-spacing:0.5px;color:#64748b;">PulseKit</td>
-                <td align="right" style="font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Event received</td>
+                <td align="right" style="font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Notification</td>
               </tr>
             </table>
           </td>
@@ -87,37 +135,33 @@ export const renderEventEmail = ({
             <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">${escapeHtml(
               projectName,
             )}</div>
-            <div style="font-size:22px;font-weight:700;color:#0f172a;font-family:${MONO};line-height:1.3;">${escapeHtml(
-              eventName,
+            <div style="font-size:22px;font-weight:700;color:#0f172a;line-height:1.3;">${escapeHtml(
+              sentenceCase(eventName),
             )}</div>
           </td>
         </tr>
         <tr>
-          <td style="padding:12px 28px 28px 28px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:13px;color:#64748b;">
-              <tr>
-                ${who}
-                <td style="padding-right:8px;color:#94a3b8;">sent</td>
-                <td style="font-family:${MONO};color:#334155;">${timestamp}</td>
-              </tr>
-            </table>
+          <td style="padding:8px 28px 24px 28px;font-size:13px;color:#64748b;">
+            ${
+              userName
+                ? `For ${escapeHtml(userName)} · `
+                : ""
+            }Sent ${escapeHtml(sent)}
           </td>
         </tr>
         <tr>
           <td style="padding:0 28px 28px 28px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;">
               <tr>
-                <td style="background:#f8fafc;padding:8px 14px;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">details</td>
+                <td style="background:#f8fafc;padding:8px 14px;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Details</td>
               </tr>
-              <tr>
-                <td style="padding:16px;">${payloadHtml}</td>
-              </tr>
+              ${payloadHtml}
             </table>
           </td>
         </tr>
         <tr>
-          <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;font-size:11px;color:#94a3b8;text-align:center;">
-            PulseKit — developer notification infrastructure
+          <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;text-align:center;">
+            Sent by ${escapeHtml(projectName)} · via PulseKit
           </td>
         </tr>
       </table>
