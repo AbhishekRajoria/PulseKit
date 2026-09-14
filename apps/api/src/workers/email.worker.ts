@@ -1,7 +1,8 @@
-import { Queue, Worker } from "bullmq";
+  import { Queue, Worker } from "bullmq";
 import { Resend } from "resend";
 import { pool } from "../db.ts";
 import { redis } from "../lib/redis.ts";
+import { renderEventEmail } from "../lib/emailTemplate.ts";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,11 +15,12 @@ const worker = new Worker(
   async (job) => {
     // load the project's enabled channels config
     const result = await pool.query(
-      `SELECT channels FROM projects where id=$1`,
+      `SELECT channels, name FROM projects where id=$1`,
       [job.data.project_id],
     );
 
     const channels = result.rows[0]?.channels ?? {};
+    const projectName = result.rows[0]?.name ?? "Untitled project";
 
     if (channels.email) {
       try {
@@ -27,7 +29,13 @@ const worker = new Worker(
           from: "onboarding@resend.dev",
           to: job.data.to ?? channels.email.to,
           subject: `New event: ${job.data.event_name}`,
-          html: `<p>${job.data.event_name} for user ${job.data.user_id}</p>`,
+          html: renderEventEmail({
+            projectName,
+            eventName: job.data.event_name,
+            userId: job.data.user_id,
+            payload: job.data.payload ?? {},
+            sentAt: new Date(),
+          }),
         });
 
         if (error) {
