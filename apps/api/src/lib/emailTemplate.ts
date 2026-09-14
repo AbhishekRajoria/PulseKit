@@ -18,7 +18,7 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-// "payment.failed" -> "Payment failed"; "apiKey" -> "Api key"; "insufficient_funds" -> "Insufficient funds"
+// "payment.failed" -> "Payment failed"; "insufficient_funds" -> "Insufficient funds"
 export const sentenceCase = (value: string): string => {
   const words = value
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -56,10 +56,18 @@ const formatValue = (value: unknown): string => {
   return String(value);
 };
 
-// email clients strip <style> blocks and <link> stylesheets — every style
-// must be inline on the element itself
+// email clients strip <style> blocks — every style must be inline
 const FONT =
   "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+// single detail row: label (small, muted) above value (prominent, dark)
+const detailRow = (label: string, value: string, last: boolean): string => `
+  <tr>
+    <td style="padding:16px 24px;${last ? "" : "border-bottom:1px solid #e8ecf1;"}">
+      <div style="font-size:11px;font-weight:500;color:#94a3b8;letter-spacing:0.3px;text-transform:uppercase;margin-bottom:5px;">${label}</div>
+      <div style="font-size:15px;color:#0f172a;line-height:1.5;word-break:break-word;">${value}</div>
+    </td>
+  </tr>`;
 
 export const renderEventEmail = ({
   projectName,
@@ -77,48 +85,35 @@ export const renderEventEmail = ({
   const visible = entries.slice(0, MAX_ROWS);
   const hiddenCount = entries.length - visible.length;
 
+  // build detail rows — each row is a clean label/value pair with generous
+  // padding and a thin inset divider between rows (not touching the edges)
   const payloadRows = visible
-    .map(
-      ([key, value]) => `
-        <tr>
-          <td style="padding:14px 18px;border-top:1px solid #f1f5f9;">
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">${escapeHtml(
-              titleCase(key),
-            )}</div>
-            <div style="font-size:14px;color:#1e293b;line-height:1.5;word-break:break-word;">${escapeHtml(
-              formatValue(value),
-            )}</div>
-          </td>
-        </tr>`,
+    .map(([key, value], i) =>
+      detailRow(
+        escapeHtml(titleCase(key)),
+        escapeHtml(formatValue(value)),
+        i === visible.length - 1 && hiddenCount === 0,
+      ),
     )
     .join("");
 
   const payloadHtml =
     payloadRows === ""
-      ? `<div style="font-size:14px;color:#94a3b8;padding:12px 0;">No additional details</div>`
+      ? `<tr><td style="padding:20px 24px;font-size:14px;color:#94a3b8;text-align:center;">No additional details</td></tr>`
       : payloadRows +
         (hiddenCount > 0
-          ? `
-        <tr>
-          <td style="padding:10px 18px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">+ ${hiddenCount} more</td>
-        </tr>`
+          ? `<tr><td style="padding:12px 24px;border-top:1px solid #e8ecf1;font-size:12px;color:#94a3b8;text-align:center;">+ ${hiddenCount} more</td></tr>`
           : "");
 
-  // greeting fires only when the sender supplied a user_name — the end
-  // recipient is a human, so we address them by name when possible
+  // greeting fires only when the sender supplied a user_name
   const greeting = userName
     ? `<div style="font-size:16px;color:#334155;margin-bottom:10px;">Hi ${escapeHtml(
         userName,
       )},</div>`
     : "";
 
-  // "user_44" is the developer's internal identifier, meaningless to the
-  // person reading this — it never appears; the recipient is shown a name
-  // when the sender provides one
   void userId;
 
-  // table wrapper = widest email-client compatibility (nested tables are evil
-  // in Outlook; one outer table is fine)
   return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
   <tr>
@@ -135,7 +130,7 @@ export const renderEventEmail = ({
           </td>
         </tr>
         <tr>
-          <td style="padding:20px 28px 4px 28px;">
+          <td style="padding:24px 28px 4px 28px;">
             ${greeting}
             <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">${escapeHtml(
               projectName,
@@ -146,7 +141,7 @@ export const renderEventEmail = ({
           </td>
         </tr>
         <tr>
-          <td style="padding:8px 28px 24px 28px;font-size:13px;color:#64748b;">
+          <td style="padding:8px 28px 28px 28px;font-size:13px;color:#64748b;">
             ${
               userName
                 ? `For ${escapeHtml(userName)} · `
@@ -154,18 +149,23 @@ export const renderEventEmail = ({
             }Sent ${escapeHtml(sent)}
           </td>
         </tr>
+
+        <!-- details section -->
+        <tr>
+          <td style="padding:0 28px 8px 28px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Details</div>
+          </td>
+        </tr>
         <tr>
           <td style="padding:0 28px 28px 28px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:8px;">
-              <tr>
-                <td style="background:#f8fafc;padding:10px 18px;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:600;letter-spacing:1px;color:#94a3b8;text-transform:uppercase;">Details</td>
-              </tr>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;overflow:hidden;">
               ${payloadHtml}
             </table>
           </td>
         </tr>
+
         <tr>
-          <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;text-align:center;">
+          <td style="padding:20px 28px 24px 28px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;text-align:center;">
             Sent by ${escapeHtml(projectName)} · via PulseKit
           </td>
         </tr>
