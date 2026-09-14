@@ -20,9 +20,9 @@ pulse.notify({
 })
 ```
 
-## Current Status — In-App Notifications + Dashboard
+## Current Status — In-App Notifications + Dashboard + Branded Emails
 
-The core schema, ingestion API, **multi-channel async delivery path**, **real-time live feed**, and **in-app notification consumption** are in place: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process fans out to the project's **enabled channels** (email via Resend, in-app via the `notifications` table, Slack via incoming webhook), appends a delivery attempt to `delivery_logs` per channel, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. The in-app channel writes notification rows that are now consumed by `GET /v1/notifications/:userId` (returns notifications + unread count), `PATCH /v1/notifications/:id/read` (marks as read), and `PATCH /v1/notifications/read-all` (marks all as read for a user). The dashboard wire-up includes a full notifications page with user selector, expand-to-read, mark-as-read, and mark-all-read — all connected to the Express API.
+The core schema, ingestion API, **multi-channel async delivery path**, **real-time live feed**, and **in-app notification consumption** are in place: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process fans out to the project's **enabled channels** (email via Resend, in-app via the `notifications` table, Slack via incoming webhook), appends a delivery attempt to `delivery_logs` per channel, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. The in-app channel writes notification rows that are now consumed by `GET /v1/notifications/:userId` (returns notifications + unread count), `PATCH /v1/notifications/:id/read` (marks as read), and `PATCH /v1/notifications/read-all` (marks all as read for a user). The dashboard wire-up includes a full notifications page with user selector, expand-to-read, mark-as-read, and mark-all-read — all connected to the Express API. Emails are now **branded HTML** (humanized payload rows, optional `user_name` greeting via the `user_name` event field, XSS-safe, inline styles only). The `user_name` field is transient — passed per event like `to`, not stored in the DB.
 
 ### Database schema (PostgreSQL)
 
@@ -178,6 +178,19 @@ npm run dev   # serves on :3000
 
 The API's integration tests run against a **dedicated `pulsedb_test` database** (never the dev `pulsedb`) — supertest drives the real Express app through real Postgres + Redis, so every suite exercises the production code path with zero test-only code in `src/`.
 
+## Integration test suites
+
+4 suites, 18 tests. All run serially (shared `pulsedb_test`), each suite truncates tables + flushes Redis before running.
+
+| Suite | Tests | What it proves |
+|-------|-------|----------------|
+| `auth.integration.test.ts` | 6 | Register, login, cookie session, logout, protected routes, orphan session |
+| `project.integration.test.ts` | 5 | CRUD, ownership scoping, duplicate-name handling, cookie vs API key isolation |
+| `event.integration.test.ts` | 5 | Ingest + queue job (worker-independent), 400/401 validation, dashboard/SDK auth isolation |
+| `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, Redis flush resets window |
+
+Queue assertion in `event.integration.test.ts` polls `getJobCounts()` until `completed + waiting + active > 0` — deterministic whether or not a live worker is consuming the queue.
+
 ```bash
 # prerequisites: pulsedb_test exists, migrations applied (001–006), Postgres + Redis running
 cd apps/api
@@ -186,7 +199,7 @@ npm test   # vitest — runs src/**/*.integration.test.ts only
 
 - Environment comes from `.env.test` (loaded via `vitest.env.ts`), pointing `DATABASE_URL` at `pulsedb_test`.
 - `vitest.setup.ts` refuses to run unless the connected DB ends in `_test`, and truncates all tables between tests.
-- Suites run **serially** (`fileParallelism: false`) — every suite truncates the same shared `pulsedb_test`, so files must not run in parallel.
+- `fileParallelism: false` — every suite truncates the same shared `pulsedb_test`, so files must not run in parallel.
 - `COOKIE_SECRET` for the test env lives in `.env.test` (gitignored).
 
 ## Code layout
@@ -203,6 +216,7 @@ apps/
       routes/         # auth.routes.ts, event.routes.ts, notification.routes.ts, project.routes.ts
       lib/queue.ts     # BullMQ producer (email queue)
       lib/redis.ts     # shared ioredis clients (general + subscriber) — single REDIS_URL source
+      lib/emailTemplate.ts  # renders branded HTML emails (humanized payload, XSS-safe, inline styles only)
       lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
       workers/         # email.worker.ts: multi-channel fan-out (email/Slack/in-app) + per-channel isolation + pub/sub publish
       types/           # EventRow, DeliveryRow, User, Project, PgError, ApiResponse
@@ -237,6 +251,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Mini 6** — Queue + WebSocket combined
 - [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app + Slack live; webhook pending)
 - [x] **Mini 8** — In-app notification consumption (GET notifications + unread count, PATCH mark-as-read, dashboard inbox UI)
+- [x] **Branded email template** — branded HTML email for end users (humanized payload, optional `user_name` greeting, XSS-safe, inline styles only, Resend + per-channel isolation)
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
 
 ## License
