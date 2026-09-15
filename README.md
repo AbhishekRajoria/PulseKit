@@ -168,13 +168,23 @@ npm run worker
 ```
 
 ```bash
-# Dashboard — needs .env with API_URL, API_KEY, and NEXT_PUBLIC_WS_URL (ws://localhost:8080)
+# Dashboard — needs .env with API_URL and NEXT_PUBLIC_WS_URL (ws://localhost:8080)
 cd apps/web
 npm install
 npm run dev   # serves on :3000
 ```
 
 ### Deploy it
+
+Live URLs:
+- API: `https://pulsekit-api.up.railway.app`
+- Dashboard: `https://get-pulsekit.vercel.app`
+
+```bash
+# Dashboard env (Vercel) — no API_KEY needed; the dashboard reads via the session cookie
+API_URL=https://pulsekit-api.up.railway.app
+NEXT_PUBLIC_WS_URL=wss://pulsekit-api.up.railway.app
+```
 
 Two processes (Railway, both with root directory `apps/api`):
 
