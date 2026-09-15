@@ -13,9 +13,12 @@
   "author": "Abhishek Rajoria",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "node --watch --env-file=.env.local src/index.ts",
-    "start": "node --env-file=.env.local src/index.ts",
+    "start": "node src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "worker": "node --watch --env-file=.env.local src/workers/email.worker.ts"

@@ -174,7 +174,27 @@ npm install
 npm run dev   # serves on :3000
 ```
 
-### Integration tests
+### Deploy it
+
+Two processes (Railway, both with root directory `apps/api`):
+
+| Service | Start command |
+|---|---|
+| `api` | `npm start` (→ `node src/index.ts`, listens on `$PORT`) |
+| `worker` | `node src/workers/email.worker.ts` |
+
+Environment variables:
+
+| Variable | Services | Notes |
+|---|---|---|
+| `DATABASE_URL` | api, worker | Neon/Postgres, `sslmode=require` |
+| `REDIS_URL` | api, worker | Upstash Redis-compatible (`rediss://…:6379`), not REST/HTTP |
+| `RESEND_API_KEY` | api, worker | |
+| `COOKIE_SECRET` | api | fresh random string per environment |
+| `NODE_ENV=production` | api, worker | disables the dev API-key fallback + Bull Board |
+| `PORT` | api | injected by Railway |
+
+## Integration tests
 
 The API's integration tests run against a **dedicated `pulsedb_test` database** (never the dev `pulsedb`) — supertest drives the real Express app through real Postgres + Redis, so every suite exercises the production code path with zero test-only code in `src/`.
 
