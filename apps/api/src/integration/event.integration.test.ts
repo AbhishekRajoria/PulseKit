@@ -35,10 +35,10 @@ describe("POST /api/v1/events ", () => {
 
     expect(res.status).toBe(202);
     expect(res.body.success).toBe(true);
-    expect(typeof res.body.data).toBe("string");
-    expect(res.body.data).toMatch(
+    expect(res.body.data.eventId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
+    expect(typeof res.body.data.receivedAt).toBe("string");
     expect(await waitForJobSettled()).toBe(true);
   });
 

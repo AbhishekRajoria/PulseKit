@@ -56,9 +56,14 @@ export const getAllEvents = async (
   }
 };
 
+export type EventReceipt = {
+  eventId: string;
+  receivedAt: string;
+};
+
 export const notify = async (
   req: Request,
-  res: Response<ApiResponse<EventRow>>,
+  res: Response<ApiResponse<EventReceipt>>,
 ) => {
   const { event_name, user_id } = req.body;
   const to = req.body.to;
@@ -112,7 +117,10 @@ export const notify = async (
 
     return res.status(202).json({
       success: true,
-      data: result.rows[0].id,
+      data: {
+        eventId: result.rows[0].id,
+        receivedAt: result.rows[0].received_at,
+      },
     });
   } catch (error) {
     console.error(error);
