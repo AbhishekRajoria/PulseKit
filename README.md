@@ -13,12 +13,17 @@ import { PulseKit } from 'pulsekit'
 
 const pulse = new PulseKit({ apiKey: 'your-key' })
 
-pulse.notify({
+const receipt = await pulse.notify({
   event: 'payment.failed',
   user: 'user_123',
   data: { amount: 499, reason: 'card_declined' }
 })
+// → { eventId: '...', receivedAt: '...' } or null on transient failure
 ```
+
+## The SDK
+
+`packages/sdk` is a standalone, publishable npm package (no workspaces — it builds and tests on its own). One `notify()` call maps camelCase input to the API's snake_case contract, 10s timeout with `AbortController`, and explicit error semantics: **4xx throws `PulseKitError`, 5xx/429/network/timeout return `null`** — loud when it's your fault, quiet when it's transient. Dual ESM + CJS output with type declarations. 16-test mocked-fetch suite covers the full contract.
 
 ## Current Status — In-App Notifications + Dashboard + Branded Emails
 
@@ -266,6 +271,10 @@ apps/
         LiveFeed.tsx    # live delivery feed (client WebSocket)
         PayloadBlock.tsx # JSON payload display
     lib/format.ts       # shared utilities (timeAgo, etc.)
+packages/
+  sdk/                 # standalone publishable npm package (pulsekit)
+    src/index.ts       # PulseKit class: notify(), timeout, error semantics
+    src/index.test.ts  # 16-test vitest contract suite (mocked fetch)
 ```
 
 ## Roadmap
@@ -282,6 +291,7 @@ Building toward the full PulseKit platform via independent mini-projects:
 - [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app + Slack live; webhook pending)
 - [x] **Mini 8** — In-app notification consumption (GET notifications + unread count, PATCH mark-as-read, dashboard inbox UI)
 - [x] **Branded email template** — branded HTML email for end users (humanized payload, optional `user_name` greeting, XSS-safe, inline styles only, Resend + per-channel isolation)
+- [x] **Mini 9** — PulseKit SDK package (`packages/sdk`, publishable): one `notify()` call, 10s timeout, 4xx-throw / transient-null semantics, dual ESM+CJS, 16-test suite
 - Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
 
 ## License
