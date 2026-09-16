@@ -1,11 +1,36 @@
+import { cookies } from "next/headers";
+
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
+
+  if (!userId) {
+    return Response.json(
+      { success: false, error: "Unauthenticated" },
+      { status: 401 },
+    );
+  }
+
+  const { searchParams } = new URL(req.url);
+  const projectId = searchParams.get("project_id");
+
+  if (!projectId) {
+    return Response.json(
+      { success: false, error: "Missing project_id" },
+      { status: 400 },
+    );
+  }
+
   const res = await fetch(
-    `${process.env.API_URL}/api/v1/notifications/${id}/read`,
-    { method: "PATCH", headers: { Authorization: `Bearer ${process.env.API_KEY}` } },
+    `${process.env.API_URL}/api/v1/notifications/${id}/read?project_id=${projectId}`,
+    {
+      method: "PATCH",
+      headers: { Cookie: `userId=${userId}` },
+    },
   );
   const data = await res.json();
 
