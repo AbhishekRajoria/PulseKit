@@ -35,7 +35,10 @@ describe("POST /api/v1/events ", () => {
 
     expect(res.status).toBe(202);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.event_name).toBe("payment.failed");
+    expect(typeof res.body.data).toBe("string");
+    expect(res.body.data).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
     expect(await waitForJobSettled()).toBe(true);
   });
 

@@ -112,7 +112,7 @@ export const notify = async (
 
     return res.status(202).json({
       success: true,
-      data: result.rows[0],
+      data: result.rows[0].id,
     });
   } catch (error) {
     console.error(error);
