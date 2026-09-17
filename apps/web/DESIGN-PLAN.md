@@ -2,6 +2,11 @@
 *Visual direction, component inventory, page-by-page layout, motion, states.*
 *Stack: Next.js 16 App Router · React 19 · Tailwind CSS v4 · Inter + JetBrains Mono · no component library*
 
+> ⚠️ **SUPERSEDED 2026-09-17.** The emerald/graphite direction here was replaced by
+> **monochrome-first + copper-as-signal**. See `apps/web/LOVABLE-PREVIEW-PROMPT.md`
+> for the current authoritative design system. Kept for history and the still-valid
+> component/token inventory.
+
 ---
 
 ## 0. Design Brief Answer — One Direction, Argued

@@ -1,12 +1,17 @@
 # PulseKit
 
-Developer-facing notification and alerting infrastructure. Instrument your app with a tiny SDK, define rules in a dashboard, and PulseKit handles multi-channel delivery (email, Slack, webhook, in-app) with retries, rate limiting, deduplication, and real-time status.
+Developer-facing notification and alerting infrastructure. Instrument your app with a tiny SDK, define rules in a dashboard, and PulseKit handles multi-channel delivery (email, Slack, webhook, in-app) with retries, rate limiting, and real-time delivery status.
 
 > 🚧 **Work in progress.** Currently in the mini-project phase: each core concept is built independently first, then assembled into PulseKit.
 
+## Design
+
+- `apps/web/LOVABLE-PREVIEW-PROMPT.md` — current design system (**monochrome-first + copper-as-signal**) and the Lovable preview restyle/build prompt. This is the authoritative design direction.
+- `apps/web/DESIGN-PLAN.md` — earlier "instrument-grade light + emerald" plan. **Superseded** (2026-09-17) by the above.
+
 ## The Problem
 
-Every app eventually needs to notify people — users and developers. Building email logic, Slack integration, retries, deduplication, and rate limiting yourself is painful. PulseKit takes care of it so you don't have to.
+Every app eventually needs to notify people — users and developers. Building email logic, Slack integration, retries, and rate limiting yourself is painful. PulseKit takes care of it so you don't have to.
 
 ```js
 import { PulseKit } from 'pulsekit-sdk'
