@@ -1,5 +1,5 @@
 {
-  "name": "pulsekit",
+  "name": "pulsekit-sdk",
   "version": "0.1.0",
   "description": "One-call notification client for PulseKit — multi-channel delivery, retries, and real-time status.",
   "main": "./dist/index.cjs",

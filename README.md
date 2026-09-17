@@ -9,7 +9,7 @@ Developer-facing notification and alerting infrastructure. Instrument your app w
 Every app eventually needs to notify people — users and developers. Building email logic, Slack integration, retries, deduplication, and rate limiting yourself is painful. PulseKit takes care of it so you don't have to.
 
 ```js
-import { PulseKit } from 'pulsekit'
+import { PulseKit } from 'pulsekit-sdk'
 
 const pulse = new PulseKit({ apiKey: 'your-key' })
 
@@ -272,7 +272,7 @@ apps/
         PayloadBlock.tsx # JSON payload display
     lib/format.ts       # shared utilities (timeAgo, etc.)
 packages/
-  sdk/                 # standalone publishable npm package (pulsekit)
+  sdk/                 # standalone publishable npm package (pulsekit-sdk)
     src/index.ts       # PulseKit class: notify(), timeout, error semantics
     src/index.test.ts  # 16-test vitest contract suite (mocked fetch)
 ```

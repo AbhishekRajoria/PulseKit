@@ -2,18 +2,18 @@
 
 One function call. PulseKit handles the delivery.
 
-`pulsekit` is the official TypeScript client for the [PulseKit](https://github.com/AbhishekRajoria/PulseKit) notification API — multi-channel delivery (email, Slack, in-app), retries, rate limiting, and real-time delivery status behind a single `notify()` call.
+`pulsekit-sdk` is the official TypeScript client for the [PulseKit](https://github.com/AbhishekRajoria/PulseKit) notification API — multi-channel delivery (email, Slack, in-app), retries, rate limiting, and real-time delivery status behind a single `notify()` call.
 
 ## Install
 
 ```bash
-npm install pulsekit
+npm install pulsekit-sdk
 ```
 
 ## Usage
 
 ```js
-import { PulseKit, PulseKitError } from "pulsekit";
+import { PulseKit, PulseKitError } from "pulsekit-sdk";
 
 const pulse = new PulseKit({ apiKey: "pk_live_..." });
 
