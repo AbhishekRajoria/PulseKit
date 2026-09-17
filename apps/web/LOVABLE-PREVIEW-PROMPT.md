@@ -94,6 +94,12 @@ shadows, simple icons, consistent 12–16px radius.
   data (event names, API keys, IDs, route paths, latency values); tabular
   numerals on every metric; 11px uppercase tracking-wider micro-labels
   for table headers and field labels.
+- BRAND MARK: replace any "P" letter tile with the signal-dot mark — a
+  filled circle #C2410C with one larger, dimmer concentric ring (a simple
+  scale pulse animation is fine). Always paired with the "PulseKit"
+  wordmark in Inter 600. NEVER render "Pulse Node" as visible text (Node
+  reads as Node.js to developers). Avoid waveform/ECG lines and
+  multi-node network-graph marks — neither survives at favicon size.
 
 ───────────────────────────────
 4. EXISTING PAGES — RESTYLE, DON'T RESTRUCTURE
@@ -105,9 +111,16 @@ restyle them in place, keep ALL content and copy:
 - /projects list (see Projects fix below).
 - Create-project modal (name + rate-limit presets 5–30 req/min; success
   state = "shown once" amber badge + masked pk_test_… key with
-  reveal/copy + "View project").
+  reveal/copy + "View project"). ON the success card, directly under the
+  copy button, add the recovery-path line: "Can't find it later? Reveal
+  it again from project settings (password required)." — one sentence,
+  removes the first-run dead-end feeling.
 - /docs (keep IA: sticky toc, numbered sections; improve spacing, code
   block presentation, active-section highlight, copy buttons).
+  ALSO: existing docs copy may still carry outdated or invented facts —
+  rewrite ALL docs copy to match the §0 FACTS exactly, in a precise,
+  declarative infra voice (state the behaviour first, then the
+  constraint/implication; no marketing words, no "easily/simply/just").
 - /guide (architecture page content stays as-is).
 
 PROJECTS LIST FIX (specific decision): no sparklines, no charts. Card =
@@ -115,6 +128,10 @@ compact mono line (project id like prj_w8f2k9m) + 3-column stat strip
 (events/users/unread, unread in red) + rate-limit caption (e.g. 30
 req/min) + created / "last event X ago" meta. Wide operational cards
 using the viewport. "New project" sits in the page header, right.
+
+EMPTY PROJECTS LIST (first-run surface): directly under the "New
+project" button add the hint line: "Create a project to get your API key
+and start sending events." No modal, no animation — one line.
 
 SIDEBAR IA (applies to the dashboard shell): the Events and Notifications
 sidebar items are PROJECT-SCOPED — they always resolve to
@@ -170,4 +187,12 @@ When done, reply with: your updated token table, the 3 biggest changes
 vs the old look, and which page I should review first. This stays a
 visual preview — local deterministic mock data, interactive states,
 NO production code handoff.
+
+───────────────────────────────
+8. SEQUENCING & STOP-CONDITION
+Apply the color/token system + existing-page restyle FIRST (that is the
+cheap, high-impact part), then build the missing pages a→d in order.
+If you hit a generation limit, finish the current page cleanly, stop,
+and report exactly which pages are pending — do NOT leave
+half-painted routes behind.
 ```
