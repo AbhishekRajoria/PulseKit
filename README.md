@@ -1,303 +1,412 @@
 # PulseKit
 
-Developer-facing notification and alerting infrastructure. Instrument your app with a tiny SDK, define rules in a dashboard, and PulseKit handles multi-channel delivery (email, Slack, webhook, in-app) with retries, rate limiting, and real-time delivery status.
+[![npm version](https://img.shields.io/npm/v/pulsekit-sdk?label=pulsekit-sdk)](https://www.npmjs.com/package/pulsekit-sdk)
+[![license](https://img.shields.io/github/license/AbhishekRajoria/PulseKit)](https://github.com/AbhishekRajoria/PulseKit/blob/main/LICENSE)
 
-> 🚧 **Work in progress.** Currently in the mini-project phase: each core concept is built independently first, then assembled into PulseKit.
+Developer-facing notification and alerting infrastructure — one SDK call, multi-channel delivery with retries, rate limiting, and real-time status.
 
-## Design
+**[npm](https://www.npmjs.com/package/pulsekit-sdk) · [Dashboard](https://get-pulsekit.vercel.app) · [API](https://pulsekit-api.up.railway.app) · [GitHub](https://github.com/AbhishekRajoria/PulseKit)**
 
-- `apps/web/LOVABLE-PREVIEW-PROMPT.md` — current design system (**monochrome-first + copper-as-signal**) and the Lovable preview restyle/build prompt. This is the authoritative design direction.
-- `apps/web/DESIGN-PLAN.md` — earlier "instrument-grade light + emerald" plan. **Superseded** (2026-09-17) by the above.
+---
 
-## The Problem
+## What it is
 
-Every app eventually needs to notify people — users and developers. Building email logic, Slack integration, retries, and rate limiting yourself is painful. PulseKit takes care of it so you don't have to.
+PulseKit accepts events from your application and fans them out to every channel your project has enabled — email via Resend, Slack via incoming webhook, in-app notification rows — with exponential-backoff retries, per-project rate limiting, and an append-only audit trail of every delivery attempt. A WebSocket feed pushes delivery updates to the dashboard in real time.
 
-```js
+You instrument your app with one call. PulseKit handles everything after.
+
+```ts
 import { PulseKit } from 'pulsekit-sdk'
 
-const pulse = new PulseKit({ apiKey: 'your-key' })
+const pulse = new PulseKit({ apiKey: 'pk_live_...' })
 
 const receipt = await pulse.notify({
-  event: 'payment.failed',
-  user: 'user_123',
-  data: { amount: 499, reason: 'card_declined' }
+  event:    'payment.failed',
+  user:     'user_123',
+  data:     { amount: 499, reason: 'card_declined' },
+  userName: 'Priya',          // optional — rendered as email greeting
 })
-// → { eventId: '...', receivedAt: '...' } or null on transient failure
+// → { eventId: '3f2c...', receivedAt: '2026-09-16T18:00:00.000Z' }
+// → null on transient failure (5xx / 429 / network / timeout)
 ```
 
-## The SDK
+---
 
-`packages/sdk` is a standalone, publishable npm package (no workspaces — it builds and tests on its own). One `notify()` call maps camelCase input to the API's snake_case contract, 10s timeout with `AbortController`, and explicit error semantics: **4xx throws `PulseKitError`, 5xx/429/network/timeout return `null`** — loud when it's your fault, quiet when it's transient. Dual ESM + CJS output with type declarations. 16-test mocked-fetch suite covers the full contract.
+## How it works
 
-## Current Status — In-App Notifications + Dashboard + Branded Emails
+`POST /api/v1/events` ingests the event, enqueues a BullMQ job, and returns `202 Accepted` in the time it takes to write one Postgres row. A background worker process loads the project's `channels` config and fans out to every enabled channel in a single pass — each channel isolated in its own `try/catch` so a Slack failure never causes a duplicate email. Every attempt appends one row to the append-only `delivery_logs` table. After each attempt the worker publishes a delivery update to Redis, which the WebSocket server broadcasts to every connected dashboard client.
 
-The core schema, ingestion API, **multi-channel async delivery path**, **real-time live feed**, and **in-app notification consumption** are in place: `POST /api/v1/events` enqueues a BullMQ job, a separate worker process fans out to the project's **enabled channels** (email via Resend, in-app via the `notifications` table, Slack via incoming webhook), appends a delivery attempt to `delivery_logs` per channel, and **publishes each delivery update to Redis pub/sub**. A WebSocket server shares the Express HTTP server, subscribes to that channel, and broadcasts updates to the dashboard's live feed. The in-app channel writes notification rows that are now consumed by `GET /v1/notifications/:userId` (returns notifications + unread count), `PATCH /v1/notifications/:id/read` (marks as read), and `PATCH /v1/notifications/read-all` (marks all as read for a user). The dashboard wire-up includes a full notifications page with user selector, expand-to-read, mark-as-read, and mark-all-read — all connected to the Express API. Emails are now **branded HTML** (humanized payload rows, optional `user_name` greeting via the `user_name` event field, XSS-safe, inline styles only). The `user_name` field is transient — passed per event like `to`, not stored in the DB.
+---
 
-### Database schema (PostgreSQL)
+## Install
 
-Five tables plus a `channels` JSONB column on `projects`, ordered by foreign-key dependency:
+```bash
+npm install pulsekit-sdk
+```
 
-| Migration | Table | Purpose |
-|---|---|---|
-| `001_create_users.sql` | `users` | PulseKit account owners |
-| `002_create_projects.sql` | `projects` | A user's app(s), each with an `api_key` + `rate_limit_per_min` + `channels` config |
-| `003_create_events.sql` | `events` | Ingested events (`event_name`, `user_id`, `payload`) |
-| `004_create_delivery_logs.sql` | `delivery_logs` | **Append-only** — one row per delivery attempt, never updated |
-| `005_create_notifications.sql` | `notifications` | User-facing notification records |
-| `006_add_channels_to_projects.sql` | `projects` | Adds `channels` JSONB (`{"email": {...}, "inapp": {}, ...}`) |
+### Quickstart
 
-Key design decisions:
+1. Sign in at [get-pulsekit.vercel.app](https://get-pulsekit.vercel.app), create a project, and copy your API key — it is shown exactly once.
+2. Configure at least one delivery channel in your project settings (email, Slack, or in-app).
+3. Send your first event:
 
-- **`events` has no `status` or `channel`** — those live on `delivery_logs`. An `Event` returned by the API is a **joined view** of `events` + latest `delivery_logs` row.
-- **`delivery_logs` is append-only** — every attempt is a new row (retry history, no destructive updates).
-- **Canonical channels:** `email | slack | webhook | inapp`
-- **Canonical statuses:** `pending | delivered | failed | rate_limited | deduplicated`
-- **Channels are configured per project** (`channels` JSONB on `projects`) — which channels an event fans out to is the developer's config, not the sender's choice.
+```ts
+import { PulseKit, PulseKitError } from 'pulsekit-sdk'
 
-### Dashboard auth (register / login / session)
+const pulse = new PulseKit({ apiKey: 'pk_live_...' })
 
-Dashboard (developer) accounts are protected by real email+password auth on the Express API:
+try {
+  const receipt = await pulse.notify({
+    event: 'user.signup',
+    user:  'user_456',
+    data:  { plan: 'free' },
+  })
 
-| Method | Path | Auth | Purpose |
+  if (!receipt) {
+    // Transient failure — PulseKit is down or rate-limited.
+    // Queue the event and retry; BullMQ handles delivery-side retries automatically.
+  }
+} catch (err) {
+  if (err instanceof PulseKitError) {
+    // 4xx — caller error. Fix the request; do not retry.
+    console.error(err.statusCode, err.body)
+  }
+}
+```
+
+---
+
+## SDK reference
+
+### `new PulseKit(options)`
+
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `POST` | `/auth/register` | None | Create an account (bcrypt-hashed password) |
-| `POST` | `/auth/login` | None | Verify credentials, set a signed session cookie |
-| `POST` | `/auth/logout` | Cookie | Clear the signed session cookie |
-| `GET` | `/auth/me` | Cookie | Resolve the signed-in user |
+| `apiKey` | `string` | — | **Required.** Project API key (`pk_live_…`) |
+| `baseUrl` | `string` | `https://pulsekit-api.up.railway.app/api/v1` | Override to point at a self-hosted instance |
+| `timeout` | `number` | `10_000` | Request timeout in milliseconds |
 
-- Passwords are hashed with **bcrypt** (cost 10) before insert; `password_hash` is never returned by the API (`RETURNING` excludes it).
-- Login sets a **signed HTTP-only cookie** (`userId`) via `cookie-parser` + `COOKIE_SECRET` — `httpOnly` blocks XSS reads, `sameSite:'lax'` blocks cross-site CSRF sends, and the signature makes the cookie untamperable. Expires after 7 days.
-- The `authenticate` middleware reads `req.signedCookies.userId` → `req.userId` (rejects tampered/absent cookies) and guards protected routes.
-- Both "unknown email" and "wrong password" return the same `401 Invalid email or password` so attacker can't enumerate registered emails.
-- A signed cookie referencing a deleted user (orphan session) is cleared on `/auth/me` and returned as `401 Session expired`.
+### `await pulse.notify(input)`
 
-### Ingestion API (Express)
+CamelCase input is mapped to the API's snake_case contract before sending.
 
-**SDK routes** (server-to-server, authenticated via API key):
+| Field | Type | Required | Sent as | Notes |
+|---|---|---|---|---|
+| `event` | `string` | ✅ | `event_name` | |
+| `user` | `string` | ✅ | `user_id` | Your application's user identifier — never shown in emails |
+| `data` | `object` | — | `payload` | Defaults to `{}` |
+| `to` | `string` | — | `to` | Per-event email recipient — overrides the project's configured address. Does not enable a disabled channel. |
+| `userName` | `string` | — | `user_name` | Rendered as "Hi {name}," in the email. Transient — never stored. |
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `POST` | `/api/v1/events` | API key | Ingest an event |
-| `GET` | `/api/v1/notifications/:userId` | API key | Fetch in-app notifications + unread count for a user |
+**Return value:** `Promise<EventReceipt | null>`
 
-**Dashboard routes** (browser, authenticated via signed cookie + project ownership check):
+```ts
+type EventReceipt = {
+  eventId:    string   // server-assigned UUID
+  receivedAt: string   // ISO timestamp — when PulseKit accepted the event
+}
+```
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `GET` | `/api/v1/events` | Cookie | List project's events (`?project_id=xxx`) |
-| `GET` | `/api/v1/events/:id` | Cookie | Fetch one event with its delivery logs (`?project_id=xxx`) |
-| `PATCH` | `/api/v1/notifications/read-all` | Cookie | Mark all notifications as read (`?project_id=xxx`) |
-| `PATCH` | `/api/v1/notifications/:id/read` | Cookie | Mark a notification as read (`?project_id=xxx`) |
-| `GET` | `/api/v1/notifications/users` | Cookie | List distinct users for a project's notifications (`?project_id=xxx`) |
-| `GET` | `/api/v1/notifications/project/:projectId/user/:userId` | Cookie | Fetch notifications for one user within a project |
-| `GET` | `/api/v1/projects/:id/stats` | Cookie | Aggregate stats for a project (events, users, unread count) |
+### Error semantics
 
-**Project management** (dashboard, all behind `authenticate`):
-
-| Method | Path | Purpose |
-|---|---|---|
-| `POST` | `/api/v1/projects` | Create project + generate API key |
-| `GET` | `/api/v1/projects` | List user's projects |
-| `GET` | `/api/v1/projects/:id` | Get project details |
-| `PATCH` | `/api/v1/projects/:id` | Update project name / rate limit |
-| `DELETE` | `/api/v1/projects/:id` | Delete project (cascades) |
-| `POST` | `/api/v1/projects/:id/reveal-key` | Reveal API key (requires password) |
-
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `GET` | `/health` | None | Liveness/readiness probe — pings Postgres (`SELECT 1`), 200 if reachable, 503 otherwise |
-
-- **Versioned routes** — `/api/v1/...` so future breaking changes add v2 without breaking deployed SDKs.
-- **Two auth layers** — SDK routes use `apiKeyAuth` (reads `Authorization: Bearer <api_key>`, resolves `project_id` from the `projects` table). Dashboard routes use `authenticate` (reads signed cookie → `req.userId`) + `project_id` from query param, with ownership verification (`WHERE user_id = $1 AND id = $2`).
-- **Rate limiting** — the ingest route (`POST /events`) is limited per **project** (not per IP) by a Redis sliding-window limiter (default 30 req/min, configurable 5–30 per project). The `apiKeyAuth` middleware resolves the project's `rate_limit_per_min` from the `projects` table and attaches it to the request; the limiter keys on `ratelimit:project:<project_id>`. Exceeding the quota returns `429` with a `Retry-After: 60` header, and **blocked requests consume no quota** (Lua script does the check-then-add atomically). The client owns retry. `rate_limited` as a delivery status belongs to the *delivery* side (provider throttling on send), not ingest.
-- **Single Redis source of truth** — all Redis consumers (`rateLimiter`, BullMQ `queue`, worker, WS subscriber) connect through the shared clients in `src/lib/redis.ts`, which read `process.env.REDIS_URL` (defaults to localhost in dev). No hardcoded connections; works as-is against a managed Redis on deploy.
-- **`GET /events` uses a LEFT JOIN** so events with no `delivery_logs` row yet (still `pending`) are visible with `status: null`.
-- **`GET /events/:id` aggregates** each event's `delivery_logs` into a nested `logs` array via `json_agg` (COALESCE + `FILTER (WHERE d.id IS NOT NULL)` so an event with no logs returns `[]`, not null).
-- **Dev mode** — if no `api_key` is sent and `NODE_ENV !== 'production'`, the middleware falls back to a hardcoded dev key (`dev_apikey_123`) for local testing.
-
-### Async multi-channel delivery (BullMQ + Resend + Slack + in-app)
-
-- **Producer** — `createEvent` enqueues a job onto the `email` queue (`src/lib/queue.ts`) with `event_id`/`project_id`/`user_id`/`event_name`/`payload`, then returns `202 Accepted` (delivery is deferred to a background worker). An optional `to` (email recipient) from the event body is forwarded into the job — the worker otherwise resolves the recipient from the project's channel config at delivery time.
-- **Fan-out** — the worker loads the project's `channels` JSONB config and delivers to every enabled channel in one pass. **One queue, one worker, internal fan-out** (channel routing is a concern of the worker, not transport). The email recipient resolves as `job.data.to ?? channels.email.to` — **a per-event `to` (the app's end-user) wins; otherwise it falls back to the project's configured address** (`channels.email.to` = the integrator's own inbox — no hardcoded addresses in code). Per-event `to` overrides the *recipient* only, never *enables* the channel: email still requires `channels.email` configured. A `channels` config example: `{"email": {"to": "dev@example.com"}, "inapp": {}, "slack": {"webhook_url": "https://hooks.slack.com/services/..."}}`.
-- **Channel implementations** — email via Resend; in-app by inserting a row into `notifications`; **Slack via an incoming-webhook POST** (`fetch` with `redirect: "manual"` so a bad/expired webhook URL redirecting to slack.com is treated as a failure, not a silent "delivered").
-- **Per-channel isolation** — each channel runs in its own `try/catch`. A failing channel writes its own `failed` `delivery_logs` row and publishes a `failed` update, but **the job still resolves** so a failure in one channel never re-delivers the others (no duplicate emails). Channel failures are logged once (`attempt_number: 1`) and are not retried — that's the per-channel audit trail.
-- **Catastrophic failures only retry** — a throw *outside* the channel branches (e.g. project config read / DB down) rejects the job, so BullMQ's `attempts: 5` + exponential backoff + jitter still apply — but only when **no channel could be attempted**.
-- **Dead-letter queue** — the `failed` listener now fires only for catastrophic failures: on exhaustion (`attemptsMade >= opts.attempts`) it quarantines the job data into a separate `email-dlq` queue and appends a sentinel `delivery_logs` row (`status='failed'`, `attempt_number = attemptsMade + 1`) so the audit trail closes out honestly.
-- **Resend test mode** — without a verified domain, Resend only allows sending to the account owner's own address; real multi-recipient sends require a verified domain (deploy step).
-- **Real-time live feed** — after each delivery attempt the worker `PUBLISH`es a `delivery_update` to the Redis `delivery_updates` channel. The API (`src/lib/websocket.ts`) runs a `WebSocketServer` on the **same HTTP server as Express** (one port, HTTP + WS), subscribes via a dedicated Redis subscriber client, and broadcasts to connected dashboard clients. The dashboard's `LiveFeed` client component opens a browser `WebSocket`, filters by `projectId`, prepends updates, and reconnects with backoff.
-
-### Dashboard (Next.js)
-
-App Router dashboard under `apps/web` with a `(dashboard)` route group — themed with an **instrument-grade light** palette (white-dominant, ink scale, emerald `pulse` accent, Inter + JetBrains Mono). Server pages authenticate via the signed cookie and scope queries with `?project_id=` — API keys stay server-side with the SDK, never in the browser.
-
-**Projects page** — cards show live aggregate stats per project (event count, distinct users, unread notifications, time since last event) via `GET /api/v1/projects/:id/stats`. A **modal** form (`CreateProjectForm`) creates new projects with name + a rate-limit preset selector (5–30 req/min in steps of 5).
-
-**Project detail** — quick-look stat cards show events and unread counts from the same stats endpoint; event list and live feed scoped to that project.
-
-**Notifications** — moved to `projects/[id]/notifications` (per-project, user-pill selector with unread badges, mark-read / mark-all-read). The old flat `/notifications` page redirects to `/projects`.
-
-**Sidebar** — collapsed icon-only nav on desktop (toggle button on the sidebar edge), full-width on mobile; all icons always visible; Log out button at the bottom.
-
-## Tech Stack
-
-| Layer | Tech |
+| Condition | Behaviour |
 |---|---|
-| API | Node.js + Express + TypeScript |
-| API auth | Bearer API-key middleware (ingest), bcrypt password + signed cookie (dashboard) |
-| Database | PostgreSQL 18 (`gen_random_uuid()` built in) |
-| Cache / rate limit | Redis (ioredis) + Lua script |
-| Queue | BullMQ + Redis |
-| Email | Resend (test mode for dev) |
-| Real-time | WebSocket (`ws`) + Redis pub/sub |
-| Dashboard | Next.js (App Router) |
-| Test | Vitest |
+| `2xx` | Returns `EventReceipt` |
+| `4xx` (excluding 429) | **Throws `PulseKitError`** — caller error, fix the request |
+| `429`, `5xx`, network failure, timeout | Returns `null` — transient, retry at the caller's discretion |
 
-## Run it
+`PulseKitError` exposes `.statusCode: number` and `.body: unknown`.
+
+The SDK applies a 10-second `AbortController` timeout per request. It ships dual ESM + CJS output with TypeScript declarations.
+
+---
+
+## REST API
+
+### Ingest an event
+
+```
+POST /api/v1/events
+Authorization: Bearer <api_key>
+Content-Type: application/json
+```
+
+```json
+{
+  "event_name": "payment.failed",
+  "user_id":    "user_123",
+  "payload":    { "amount": 499, "reason": "card_declined" },
+  "to":         "priya@example.com",
+  "user_name":  "Priya"
+}
+```
+
+`to` and `user_name` are optional. `payload` defaults to `{}` when omitted.
+
+**curl example**
 
 ```bash
-# API — needs Postgres + Redis
+curl -X POST https://pulsekit-api.up.railway.app/api/v1/events \
+  -H "Authorization: Bearer pk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_name": "payment.failed",
+    "user_id":    "user_123",
+    "payload":    { "amount": 499, "reason": "card_declined" }
+  }'
+```
+
+**Response — `202 Accepted`**
+
+```json
+{
+  "success": true,
+  "data": {
+    "eventId":    "3f2c1a...",
+    "receivedAt": "2026-09-16T18:00:00.000Z"
+  }
+}
+```
+
+**Status codes**
+
+| Code | Meaning |
+|---|---|
+| `202` | Event accepted and enqueued |
+| `400` | Validation error — `event_name` or `user_id` missing or invalid type |
+| `401` | Invalid or missing API key |
+| `429` | Rate limit exceeded — see `Retry-After: 60` header |
+| `500` | Server error |
+
+---
+
+## Rate limiting
+
+Rate limiting is per project, not per IP — enforced by a Redis sliding-window Lua script so the check and increment are atomic.
+
+- Default: **30 requests / minute** per project
+- Configurable: 5–30 req/min (set per project in the dashboard)
+- Blocked requests return `429` with `Retry-After: 60` and consume **no quota**
+- The client owns retry; BullMQ handles delivery-side retries automatically
+
+---
+
+## Error handling
+
+```ts
+const receipt = await pulse.notify({ event: 'order.placed', user: 'u1' })
+
+if (!receipt) {
+  // PulseKit was unavailable, rate-limited, or timed out.
+  // Safe to retry — the event was never ingested.
+}
+```
+
+```ts
+try {
+  await pulse.notify({ event: 42, user: 'u1' } as any)
+} catch (err) {
+  if (err instanceof PulseKitError && err.statusCode === 400) {
+    // Type error in the caller — fix the input, do not retry.
+  }
+}
+```
+
+---
+
+## Delivery channels
+
+Channels are configured per project in the dashboard. The worker only delivers to channels that are explicitly enabled.
+
+| Channel | Delivery mechanism | Notes |
+|---|---|---|
+| **Email** | Resend — branded HTML, humanised payload, optional `user_name` greeting | Requires a verified domain for sends outside the account owner's address |
+| **Slack** | Incoming webhook POST | Webhook redirects (e.g. expired URLs) are treated as failures — `redirect: "manual"` prevents false "delivered" logs |
+| **In-app** | Row inserted into `notifications` — queryable via `GET /api/v1/notifications/:userId` | Unread count included; mark-as-read and mark-all-read via `PATCH` |
+
+A per-event `to` field overrides the email recipient for that event only. It does not enable the email channel if it is not configured.
+
+Delivery failures on one channel never re-deliver the others. Each channel attempt is logged independently.
+
+---
+
+## Retries and delivery audit
+
+- **Channel-level failures** (Resend rejects, Slack webhook 4xx) — logged once to `delivery_logs` as `failed`, not retried. The job still resolves so other channels are unaffected.
+- **Catastrophic failures** (project config unreadable, database unavailable) — the job rejects and BullMQ retries up to five times with exponential backoff and jitter. On exhaustion, the job moves to a dead-letter queue and a sentinel `failed` row closes the audit trail.
+- `delivery_logs` is **append-only** — one row per attempt, never updated. Retry history is preserved in full.
+
+Delivery statuses: `pending` · `delivered` · `failed` · `rate_limited`
+
+---
+
+## Real-time feed
+
+The WebSocket server shares the Express HTTP server on the same port — no separate WS port to open.
+
+```
+wss://pulsekit-api.up.railway.app
+```
+
+The worker publishes a `delivery_update` message to Redis after each attempt. The WS server subscribes via a dedicated Redis client and broadcasts to connected dashboard clients. The dashboard's `LiveFeed` component filters by `projectId` and reconnects automatically with backoff.
+
+Connecting directly from your own frontend is not part of the current API surface — the live feed is a dashboard feature.
+
+---
+
+## Run it yourself
+
+**Prerequisites:** PostgreSQL running with a `pulsedev` user and `pulsedb` database; Redis on `localhost:6379`.
+
+```bash
+# Apply migrations (once)
 cd apps/api
+for f in db/migrations/*.sql; do
+  PGPASSWORD=pulse123 psql -U pulsedev -h localhost -d pulsedb -f "$f"
+done
+
+# Seed one dev user + project + API key (once)
+PGPASSWORD=pulse123 psql -U pulsedev -h localhost -d pulsedb -f db/seed.sql
+
+# Start the API (Express + WebSocket, :8080)
 npm install
-node --env-file=.env.local src/index.ts   # serves on :8080
-```
+node --env-file=.env.local src/index.ts
 
-Seed the database **once** (one dev user + one project + dev API key so a fresh deploy isn't dead on arrival):
+# Start the worker (separate process)
+node --env-file=.env.local src/workers/email.worker.ts
 
-```bash
-# from repo root — applies db/seed.sql to the local DB
-PGPASSWORD=pulse123 psql -U pulsedev -h localhost -d pulsedb -f apps/api/db/seed.sql
-```
-
-Credentials for the seed user live in `secret.txt` (gitignored).
-
-```bash
-# Background email worker — separate process, reads the same .env.local
-cd apps/api
-npm run worker
-```
-
-```bash
-# Dashboard — needs .env with API_URL and NEXT_PUBLIC_WS_URL (ws://localhost:8080)
-cd apps/web
+# Start the dashboard (:3000)
+cd ../web
 npm install
-npm run dev   # serves on :3000
+npm run dev
 ```
 
-### Deploy it
+**`apps/api/.env.local`**
 
-Live URLs:
-- API: `https://pulsekit-api.up.railway.app`
-- Dashboard: `https://get-pulsekit.vercel.app`
+```env
+DATABASE_URL=postgres://pulsedev:pulse123@localhost:5432/pulsedb
+REDIS_URL=redis://localhost:6379
+RESEND_API_KEY=re_...
+COOKIE_SECRET=<random-string>
+```
 
-```bash
-# Dashboard env (Vercel) — no API_KEY needed; the dashboard reads via the session cookie
+**`apps/web/.env`**
+
+```env
+API_URL=http://localhost:8080
+NEXT_PUBLIC_WS_URL=ws://localhost:8080
+```
+
+### Deploy
+
+Live deployment:
+- **API + worker** — [Railway](https://railway.app), two services sharing the same `apps/api` root
+- **Dashboard** — [Vercel](https://vercel.com)
+- **Database** — [Neon](https://neon.tech) (Postgres 18)
+- **Redis** — [Upstash](https://upstash.com) in Redis-compatible (TCP) mode — not the HTTP/serverless mode; BullMQ requires real blocking commands
+
+| Service | Start command |
+|---|---|
+| `api` | `npm start` (→ `node src/index.ts`, binds to `$PORT`) |
+| `worker` | `node src/workers/email.worker.ts` |
+
+**Environment variables**
+
+| Variable | Services | Notes |
+|---|---|---|
+| `DATABASE_URL` | api, worker | Neon connection string with `sslmode=require` |
+| `REDIS_URL` | api, worker | Upstash `rediss://…:6379` |
+| `RESEND_API_KEY` | api, worker | |
+| `COOKIE_SECRET` | api | Fresh random string per environment |
+| `NODE_ENV=production` | api, worker | Disables dev API-key fallback and Bull Board |
+| `PORT` | api | Injected by Railway |
+
+**Vercel environment variables (dashboard)**
+
+```env
 API_URL=https://pulsekit-api.up.railway.app
 NEXT_PUBLIC_WS_URL=wss://pulsekit-api.up.railway.app
 ```
 
-Two processes (Railway, both with root directory `apps/api`):
+Apply the six migrations and seed on Neon before the first deploy. The seed creates one user and one project so the dashboard is not empty on first load.
 
-| Service | Start command |
-|---|---|
-| `api` | `npm start` (→ `node src/index.ts`, listens on `$PORT`) |
-| `worker` | `node src/workers/email.worker.ts` |
+---
 
-Environment variables:
+## Tests
 
-| Variable | Services | Notes |
+### API — integration suite
+
+18 tests across 4 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
+
+| Suite | Tests | Covers |
 |---|---|---|
-| `DATABASE_URL` | api, worker | Neon/Postgres, `sslmode=require` |
-| `REDIS_URL` | api, worker | Upstash Redis-compatible (`rediss://…:6379`), not REST/HTTP |
-| `RESEND_API_KEY` | api, worker | |
-| `COOKIE_SECRET` | api | fresh random string per environment |
-| `NODE_ENV=production` | api, worker | disables the dev API-key fallback + Bull Board |
-| `PORT` | api | injected by Railway |
-
-## Integration tests
-
-The API's integration tests run against a **dedicated `pulsedb_test` database** (never the dev `pulsedb`) — supertest drives the real Express app through real Postgres + Redis, so every suite exercises the production code path with zero test-only code in `src/`.
-
-## Integration test suites
-
-4 suites, 18 tests. All run serially (shared `pulsedb_test`), each suite truncates tables + flushes Redis before running.
-
-| Suite | Tests | What it proves |
-|-------|-------|----------------|
 | `auth.integration.test.ts` | 6 | Register, login, cookie session, logout, protected routes, orphan session |
-| `project.integration.test.ts` | 5 | CRUD, ownership scoping, duplicate-name handling, cookie vs API key isolation |
-| `event.integration.test.ts` | 5 | Ingest + queue job (worker-independent), 400/401 validation, dashboard/SDK auth isolation |
-| `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, Redis flush resets window |
+| `project.integration.test.ts` | 5 | CRUD, ownership scoping, duplicate-name handling, auth isolation |
+| `event.integration.test.ts` | 5 | Ingest + queue assertion, validation errors, auth isolation |
+| `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, window reset |
 
-Queue assertion in `event.integration.test.ts` polls `getJobCounts()` until `completed + waiting + active > 0` — deterministic whether or not a live worker is consuming the queue.
+The event suite asserts on queue state (`getJobCounts()`) rather than `delivery_logs` rows — queue counts are deterministic whether or not a live worker is consuming the queue.
 
 ```bash
-# prerequisites: pulsedb_test exists, migrations applied (001–006), Postgres + Redis running
+# Prerequisites: pulsedb_test exists, migrations 001–006 applied, Postgres + Redis running
 cd apps/api
-npm test   # vitest — runs src/**/*.integration.test.ts only
+npm test
 ```
 
-- Environment comes from `.env.test` (loaded via `vitest.env.ts`), pointing `DATABASE_URL` at `pulsedb_test`.
-- `vitest.setup.ts` refuses to run unless the connected DB ends in `_test`, and truncates all tables between tests.
-- `fileParallelism: false` — every suite truncates the same shared `pulsedb_test`, so files must not run in parallel.
-- `COOKIE_SECRET` for the test env lives in `.env.test` (gitignored).
+Environment comes from `.env.test`; `vitest.setup.ts` refuses to run against any database not ending in `_test`.
 
-## Code layout
+### SDK — contract suite
+
+16 mocked-fetch tests covering the full `notify()` contract: receipt shape, `PulseKitError` on 4xx, `null` on 5xx/429/network/timeout, timeout via `AbortController`, and camelCase → snake_case mapping.
+
+```bash
+cd packages/sdk
+npm test
+```
+
+---
+
+## Repo layout
 
 ```
 apps/
-  api/                 # Express API + BullMQ multi-channel worker
+  api/                        Express API + BullMQ worker
     db/
-      migrations/     # canonical schema (001–006)
-      seed.sql        # dev bootstrap: 1 user + 1 project + dev API key
+      migrations/             001–006 — canonical schema
+      seed.sql                Dev bootstrap: 1 user + 1 project
     src/
-      controllers/    # auth.controller, event.controller, notification.controller, project.controller
-      middleware/     # apiKeyAuth, rateLimiter, authenticate (signed cookie)
-      routes/         # auth.routes.ts, event.routes.ts, notification.routes.ts, project.routes.ts
-      lib/queue.ts     # BullMQ producer (email queue)
-      lib/redis.ts     # shared ioredis clients (general + subscriber) — single REDIS_URL source
-      lib/emailTemplate.ts  # renders branded HTML emails (humanized payload, XSS-safe, inline styles only)
-      lib/websocket.ts # WebSocket server (Redis pub/sub → WS broadcast)
-      workers/         # email.worker.ts: multi-channel fan-out (email/Slack/in-app) + per-channel isolation + pub/sub publish
-      types/           # EventRow, DeliveryRow, User, Project, PgError, ApiResponse
-      db.ts            # pg Pool
-  web/                 # Next.js dashboard (Themed: instrument-grade light, Tailwind v4)
-    DESIGN-PLAN.md    # design spec + phased UI rollout
+      controllers/            auth, event, notification, project
+      middleware/             apiKeyAuth, rateLimiter, authenticate
+      routes/                 auth, event, notification, project
+      lib/
+        queue.ts              BullMQ producer
+        redis.ts              Shared ioredis clients (REDIS_URL)
+        emailTemplate.ts      Branded HTML renderer (XSS-safe, inline styles)
+        websocket.ts          WS server + Redis pub/sub subscriber
+      workers/
+        email.worker.ts       Fan-out: email / Slack / in-app + audit logging
+      types/                  EventRow, DeliveryRow, Project, ApiResponse …
+      db.ts                   pg Pool
+  web/                        Next.js App Router dashboard
     app/
-      (dashboard)/     # route group — shared layout + sidebar + global .card/.pill/.mono-data tokens
-        components/
-          Sidebar.tsx  # collapsible nav (icon-only desktop, overlay mobile)
+      (dashboard)/            Route group — sidebar, project views, live feed
         projects/
-          create-form.tsx  # modal — name + rate-limit preset pills
-          [id]/notifications/  # per-project inbox (user pills, unread badges, mark-read)
-      api/notifications/  # proxy routes to Express
+          [id]/events/        Event list + live feed
+          [id]/notifications/ Per-project inbox (user pills, mark-read)
+      api/notifications/      Proxy routes → Express
       components/
-        EventsList.tsx  # project-scoped event list
-        LiveFeed.tsx    # live delivery feed (client WebSocket)
-        PayloadBlock.tsx # JSON payload display
-    lib/format.ts       # shared utilities (timeAgo, etc.)
+        LiveFeed.tsx           WebSocket client — delivery updates
+        EventsList.tsx
+        PayloadBlock.tsx
+    lib/format.ts             timeAgo, formatting utilities
 packages/
-  sdk/                 # standalone publishable npm package (pulsekit-sdk)
-    src/index.ts       # PulseKit class: notify(), timeout, error semantics
-    src/index.test.ts  # 16-test vitest contract suite (mocked fetch)
+  sdk/                        pulsekit-sdk — standalone publishable package
+    src/
+      index.ts                PulseKit class: notify(), timeout, error semantics
+      index.test.ts           16-test mocked-fetch contract suite
 ```
 
-## Roadmap
-
-Building toward the full PulseKit platform via independent mini-projects:
-
-- [x] **Mini 1** — Redis sliding-window rate limiter
-- [x] **Schema** — canonical Postgres model (events + append-only delivery_logs)
-- [x] **Ingestion API** — versioned, API-key auth, project-scoped event CRUD
-- [x] **Mini 2** — Background job queue (BullMQ) + email via Resend, proven end-to-end
-- [x] **Mini 3** — Retry with exponential backoff + dead-letter queue + Bull Board
-- [x] **Mini 4** — Real-time with WebSocket
-- [x] **Mini 6** — Queue + WebSocket combined
-- [x] **Mini 7** — Multi-channel fan-out (single queue, per-channel isolation: email + in-app + Slack live; webhook pending)
-- [x] **Mini 8** — In-app notification consumption (GET notifications + unread count, PATCH mark-as-read, dashboard inbox UI)
-- [x] **Branded email template** — branded HTML email for end users (humanized payload, optional `user_name` greeting, XSS-safe, inline styles only, Resend + per-channel isolation)
-- [x] **Mini 9** — PulseKit SDK package (`packages/sdk`, publishable): one `notify()` call, 10s timeout, 4xx-throw / transient-null semantics, dual ESM+CJS, 16-test suite
-- Then assemble **PulseKit MVP**: one SDK endpoint, email delivery, real-time feed, rate limiting.
+---
 
 ## License
 
