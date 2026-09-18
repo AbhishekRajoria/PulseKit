@@ -15,9 +15,9 @@ export function RevealKey({ projectId }: { projectId: string }) {
   const [showKey, setShowKey] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const copy = async () => {
+  const copy = () => {
     if (!state.apiKey) return
-    await navigator.clipboard.writeText(state.apiKey)
+    navigator.clipboard?.writeText(state.apiKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
