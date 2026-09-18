@@ -34,7 +34,7 @@ export const getAllEvents = async (
 
     const result = await pool.query(
       `SELECT e.*, COALESCE(json_agg( json_build_object(
-        'id', d.id, 'event_id', d.event_id, 'project_id', d.project_id, 'channel', d.channel, 'status', d.status, 'attempt_number', d.attempt_number, 'error_message', d.error_message, 'delivered_at', d.delivered_at)) FILTER (WHERE d.id IS NOT NULL), '[]') as logs
+        'id', d.id, 'event_id', d.event_id, 'project_id', d.project_id, 'channel', d.channel, 'status', d.status, 'attempt_number', d.attempt_number, 'error_message', d.error_message, 'delivered_at', d.delivered_at) ORDER BY d.delivered_at ASC NULLS LAST, d.attempt_number ASC, d.channel ASC) FILTER (WHERE d.id IS NOT NULL), '[]') as logs
       FROM events e LEFT JOIN delivery_logs d
       ON e.id = d.event_id
       WHERE e.project_id = $1
@@ -166,7 +166,7 @@ export const getEventbyId = async (
     const event = await pool.query(
       `
       SELECT e.*, COALESCE(json_agg(json_build_object(
-        'id', d.id, 'event_id', d.event_id, 'project_id', d.project_id, 'channel', d.channel, 'status', d.status, 'attempt_number', d.attempt_number, 'error_message', d.error_message, 'delivered_at', d.delivered_at))
+        'id', d.id, 'event_id', d.event_id, 'project_id', d.project_id, 'channel', d.channel, 'status', d.status, 'attempt_number', d.attempt_number, 'error_message', d.error_message, 'delivered_at', d.delivered_at) ORDER BY d.delivered_at ASC NULLS LAST, d.attempt_number ASC, d.channel ASC)
         FILTER(WHERE d.id IS NOT NULL), '[]') as logs
       FROM events e LEFT JOIN delivery_logs d
       ON d.event_id = e.id
