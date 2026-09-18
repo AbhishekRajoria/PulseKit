@@ -79,7 +79,7 @@ describe("POST /api/v1/events ", () => {
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
-    expect(res.body.code).toBe("UNAUTHORIZED");
+    expect(res.body.code).toBe("MISSING_API_KEY");
   });
 
   it("tripwire: an API key cannot auth a dashboard route", async () => {

@@ -8,11 +8,14 @@ export const apiKeyAuth = async (
 ) => {
   const bearer_key = req.headers.authorization;
 
-  let api_key = bearer_key?.split(" ")[1];
+  const api_key = bearer_key?.split(" ")[1];
 
-  // Dev fallback — skip auth check in development
-  if (!api_key && process.env.NODE_ENV !== "production") {
-    api_key = "dev_apikey_123";
+  if (!api_key) {
+    return res.status(401).json({
+      success: false,
+      error: "Missing API key. Send it as: Authorization: Bearer <your-api-key>",
+      code: "MISSING_API_KEY",
+    });
   }
 
   const project = await pool.query(
