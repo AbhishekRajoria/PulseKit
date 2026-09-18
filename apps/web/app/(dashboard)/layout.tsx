@@ -1,39 +1,84 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Sidebar } from "./components/Sidebar";
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useState, type ReactNode } from 'react'
+import { Menu } from 'lucide-react'
+import { Sidebar } from './components/Sidebar'
+import { LogoutButton } from './components/LogoutButton'
+
+function HeaderLink({
+  href,
+  children,
+}: {
+  href: string
+  children: ReactNode
+}) {
+  const pathname = usePathname()
+  const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
+  return (
+    <Link
+      href={href}
+      className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+        active
+          ? 'font-medium text-ink'
+          : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-canvas">
-      <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((p) => !p)} />
+      <Sidebar
+        mobileOpen={mobileOpen}
+        collapsed={collapsed}
+        onToggleMobile={() => setMobileOpen((p) => !p)}
+        onToggleCollapsed={() => setCollapsed((p) => !p)}
+      />
 
-      {/* Mobile hamburger */}
-      <button
-        type="button"
-        onClick={() => setSidebarOpen((p) => !p)}
-        className="fixed left-4 top-3.5 z-50 flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 lg:hidden"
-        aria-label="Toggle sidebar"
+      <div
+        className={`flex min-h-screen flex-1 flex-col transition-[padding] duration-200 ${collapsed ? 'lg:pl-[68px]' : 'lg:pl-60'}`}
       >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </button>
+        {/* Sticky top header */}
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-canvas/90 px-5 backdrop-blur-xl lg:px-8">
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileOpen((p) => !p)}
+              className="cursor-pointer rounded-md p-1.5 text-ink-2 transition-colors hover:bg-surface-2"
+              aria-label="Toggle sidebar"
+              aria-expanded={mobileOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+          <nav className="hidden items-center gap-1 lg:flex">
+            <HeaderLink href="/">Home</HeaderLink>
+            <HeaderLink href="/docs">Docs</HeaderLink>
+            <HeaderLink href="/guide">Guide</HeaderLink>
+            <HeaderLink href="/projects">Projects</HeaderLink>
+          </nav>
+          <div className="flex items-center gap-2">
+            <LogoutButton />
+          </div>
+        </header>
 
-      {/* Content area */}
-      <main
-        className={`min-h-screen flex-1 transition-all duration-200 ${
-          sidebarOpen ? "lg:ml-60" : "lg:ml-16"
-        }`}
-      >
-        {children}
-      </main>
+        {/* Content area */}
+        <main id="main-content" className="w-full max-w-[1400px] flex-1 px-5 py-8 lg:px-10">
+          {children}
+        </main>
+      </div>
     </div>
-  );
+  )
 }

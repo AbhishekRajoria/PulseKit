@@ -1,56 +1,75 @@
-export const dynamic = "force-dynamic";
-import { fetchApi } from "@/lib/api";
-import { ApiResponse, Event } from "@/types";
-import { LiveFeed } from "@/app/components/LiveFeed";
-import { EventsList } from "@/app/components/EventsList";
-import Link from "next/link";
+export const dynamic = 'force-dynamic'
+import { fetchApi } from '@/lib/api'
+import type { ApiResponse, Event, Project } from '@/types'
+import type { Metadata } from 'next'
+import { LiveFeed } from '@/app/components/LiveFeed'
+import { EventsList } from '@/app/components/EventsList'
+import { Code } from '@/app/components/Primitives'
+import Link from 'next/link'
+import { ArrowLeft, CornerDownLeft, FileTerminal } from 'lucide-react'
 
-const apiUrl = (process.env.API_URL ?? "http://localhost:8080").replace(/\/$/, "");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const res = await fetchApi(`/api/v1/projects/${id}`)
+  if (!res.ok) return { title: 'Events' }
+  const data = (await res.json()) as ApiResponse<Project>
+  const name = data.data?.name
+  return {
+    title: name ? `${name} · Events` : 'Events',
+    description: name
+      ? `Event log and delivery status for ${name}.`
+      : 'Event log and delivery status.',
+  }
+}
+
+const apiUrl = (process.env.API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 export default async function ProjectEventsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }) {
-  const { id: projectId } = await params;
+  const { id: projectId } = await params
 
-  const res = await fetchApi(`/api/v1/events?project_id=${projectId}`);
-  const data: ApiResponse<Event[]> = await res.json();
-  const events = data.data ?? [];
+  const res = await fetchApi(`/api/v1/events?project_id=${projectId}`)
+  const data: ApiResponse<Event[]> = await res.json()
+  const events = data.data ?? []
 
-  const total = events.length;
-  const delivered = events.filter((e) => e.logs[e.logs.length - 1]?.status === "delivered").length;
-  const failed = events.filter((e) => e.logs[e.logs.length - 1]?.status === "failed").length;
-  const pending = events.filter((e) => !e.logs.length).length;
+  const total = events.length
+  const delivered = events.filter(
+    (e) => e.logs[e.logs.length - 1]?.status === 'delivered',
+  ).length
+  const failed = events.filter(
+    (e) => e.logs[e.logs.length - 1]?.status === 'failed',
+  ).length
+  const pending = events.filter((e) => !e.logs.length).length
 
   const curlSnippet = `curl -X POST ${apiUrl}/api/v1/events \\
   -H "Authorization: Bearer $PULSEKIT_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"event_name":"payment.failed","user_id":"user_123","payload":{"amount":9900,"currency":"INR"}}'`;
+  -d '{"event_name":"payment.failed","user_id":"user_123","payload":{"amount":9900,"currency":"INR"}}'`
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <Link
         href={`/projects/${projectId}`}
-        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-4 hover:text-ink"
+        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink"
       >
-        <svg
-          className="h-4 w-4 transition-transform group-hover:-translate-x-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
+        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
         Project overview
       </Link>
 
-      <div className="mt-6">
-        <h1 className="text-[1.25rem] font-semibold text-ink">Events</h1>
-        <p className="mt-1 text-sm text-ink-3">
-          {total} event{total !== 1 ? "s" : ""} processed
-        </p>
+      <div className="mt-4 flex items-center gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          Events
+        </h1>
+        <span className="pill bg-surface-2 font-mono text-ink-3">
+          {total} {total === 1 ? 'event' : 'events'}
+        </span>
       </div>
 
       {events.length === 0 ? (
@@ -58,31 +77,30 @@ export default async function ProjectEventsPage({
         <div className="mt-10">
           <div className="card overflow-hidden">
             <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
-                <svg className="h-8 w-8 text-ink-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
+              <div className="grid h-16 w-16 place-items-center rounded-2xl bg-surface-2 text-ink-4">
+                <FileTerminal className="h-8 w-8" />
               </div>
               <div>
                 <p className="text-sm font-medium text-ink">No events yet</p>
-                <p className="mt-1 text-xs text-ink-4">
+                <p className="mt-1 text-xs text-ink-3">
                   Send your first event and it will appear here in real time.
                 </p>
               </div>
             </div>
 
-            <div className="border-t border-gray-100 px-6 py-5">
-              <p className="text-[11px] font-medium text-ink-3">
+            <div className="border-t border-border px-6 py-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                 Quick start — send an event with curl
               </p>
-              <pre className="mt-2 overflow-x-auto rounded-[10px] border border-gray-200 bg-surface-2 p-4 font-mono text-[13px] leading-relaxed text-ink-2">
-                {curlSnippet}
-              </pre>
-              <p className="mt-3 text-xs text-ink-4">
-                Get your API key from{" "}
+              <div className="mt-3">
+                <Code filename="shell">{curlSnippet}</Code>
+              </div>
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-3">
+                <CornerDownLeft className="h-3.5 w-3.5" />
+                Get your API key from{' '}
                 <Link
                   href={`/projects/${projectId}`}
-                  className="cursor-pointer font-medium text-ink-3 underline underline-offset-2 hover:text-ink"
+                  className="cursor-pointer font-medium text-ink underline underline-offset-2 hover:text-copper"
                 >
                   Project overview
                 </Link>
@@ -95,27 +113,35 @@ export default async function ProjectEventsPage({
         <>
           {/* Stat cards — Total gets headline size, others secondary */}
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div className="card">
-              <p className="text-[11px] font-medium text-ink-3">Total events</p>
-              <p className="mt-2 text-[36px] font-bold leading-none tabular-nums text-ink">
+            <div className="card px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                Total events
+              </p>
+              <p className="mt-2 font-mono text-4xl font-semibold leading-none tabular-nums text-ink">
                 {total.toLocaleString()}
               </p>
             </div>
-            <div className="card">
-              <p className="text-[11px] font-medium text-ink-3">Delivered</p>
-              <p className="mt-2 text-[24px] font-bold leading-none tabular-nums text-emerald-600">
+            <div className="card px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                Delivered
+              </p>
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-copper">
                 {delivered.toLocaleString()}
               </p>
             </div>
-            <div className="card">
-              <p className="text-[11px] font-medium text-ink-3">Failed</p>
-              <p className="mt-2 text-[24px] font-bold leading-none tabular-nums text-red-600">
+            <div className="card px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                Failed
+              </p>
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-failure">
                 {failed.toLocaleString()}
               </p>
             </div>
-            <div className="card">
-              <p className="text-[11px] font-medium text-ink-3">Pending</p>
-              <p className="mt-2 text-[24px] font-bold leading-none tabular-nums text-ink-4">
+            <div className="card px-5 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                Pending
+              </p>
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-ink-3">
                 {pending.toLocaleString()}
               </p>
             </div>
@@ -133,5 +159,5 @@ export default async function ProjectEventsPage({
         </>
       )}
     </div>
-  );
+  )
 }

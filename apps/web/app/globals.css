@@ -1,29 +1,81 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #f8f9fa;
+  /* Warm monochrome paper foundation */
+  --canvas: #faf9f7;
+  --card: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f3f4f6;
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  --surface-2: #f5f4f2;
+  --border: #e7e3de;
+  --border-strong: #d3cfc9;
+  --hairline: #e7e3de;
+  --strong-border: #d3cfc9;
 
-  --ink: #111827;
-  --ink-2: #374151;
-  --ink-3: #6b7280;
-  --ink-4: #9ca3af;
+  /* Ink scale (warm, brown undertone) */
+  --ink: #1c1917;
+  --ink-2: #57534e;
+  --ink-3: #8c867f;
+  --ink-4: #a8a29e;
 
-  --pulse: #10b981;
-  --pulse-bg: #ecfdf5;
-  --pulse-dim: #d1fae5;
+  /* Primary action — near-black, not the copper signal */
+  --primary-action: #111827;
+  --primary-action-hover: #1f2937;
+
+  /* Copper — strict operational signal only */
+  --copper: #c2410c;
+  --copper-hover: #ea580c;
+  --copper-tint: #fdf3ee;
+
+  /* Functional status */
+  --failure: #dc2626;
+  --failure-tint: #fef2f2;
+  --pending: #d97706;
+
+  /* Amber security pill */
+  --amber-soft: #fdf1e3;
+  --amber-ink: #9a5b1c;
+
+  /* Dark code wells */
+  --code-surface: #18181b;
+  --code-line: #27272a;
+  --code-foreground: #e7e5e4;
+  --code-muted: #a1a1aa;
+
+  /* Overlay for modals */
+  --overlay: rgb(28 25 23 / 0.5);
+
+  /* Legacy accent aliases — point at copper/failure so stale classes degrade well */
+  --pulse: #c2410c;
+  --pulse-bg: #fdf3ee;
+  --pulse-dim: #fde0d1;
+
+  /* Radius base — cards 2xl (20px), hairline-scaled down */
+  --radius: 0.75rem;
 }
 
 @theme inline {
+  /* Radius scale — calc chain off the 12px base, matches preview exactly */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Fonts — wired to next/font variables in app/layout.tsx */
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+
   /* Surfaces */
   --color-canvas: var(--canvas);
+  --color-card: var(--card);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-hairline: var(--hairline);
+  --color-strong-border: var(--strong-border);
 
   /* Foreground scale */
   --color-ink: var(--ink);
@@ -31,31 +83,51 @@
   --color-ink-3: var(--ink-3);
   --color-ink-4: var(--ink-4);
 
-  /* Accent — delivered states + primary CTA only */
+  /* Primary action */
+  --color-primary-action: var(--primary-action);
+  --color-primary-action-hover: var(--primary-action-hover);
+
+  /* Copper signal */
+  --color-copper: var(--copper);
+  --color-copper-hover: var(--copper-hover);
+  --color-copper-tint: var(--copper-tint);
+
+  /* Functional status */
+  --color-failure: var(--failure);
+  --color-failure-tint: var(--failure-tint);
+  --color-pending: var(--pending);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-ink: var(--amber-ink);
+
+  /* Dark code wells */
+  --color-code-surface: var(--code-surface);
+  --color-code-line: var(--code-line);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-muted: var(--code-muted);
+
+  /* Overlay */
+  --color-overlay: var(--overlay);
+
+  /* Status tokens — delivered is copper, never green */
+  --color-status-delivered: var(--copper);
+  --color-status-failed: var(--failure);
+  --color-status-pending: var(--pending);
+  --color-status-rate: #f97316;
+  --color-status-dedup: var(--ink-4);
+
+  /* Legacy accent aliases */
   --color-pulse: var(--pulse);
   --color-pulse-bg: var(--pulse-bg);
   --color-pulse-dim: var(--pulse-dim);
 
-  /* Status */
-  --color-status-delivered: var(--pulse);
-  --color-status-failed: #ef4444;
-  --color-status-pending: #f59e0b;
-  --color-status-rate: #f97316;
-  --color-status-dedup: #9ca3af;
-
-  /* Channel — neutral, no colour per channel */
-  /* (channel pills use ink-4 text + bg-gray-100, no per-channel tokens needed) */
-
   /* Sidebar */
-  --color-sidebar-bg: var(--surface);
-  --color-sidebar-active-bg: #f3f4f6;
+  --color-sidebar-bg: var(--card);
+  --color-sidebar-active-bg: var(--surface-2);
   --color-sidebar-active-text: var(--ink);
 
-  --shadow-card:
-    0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains-mono);
+  /* Shadows — matte instrument grade */
+  --shadow-card: 0 1px 2px 0 rgb(28 25 23 / 0.05);
+  --shadow-panel: 0 18px 50px 0 rgb(28 25 23 / 0.12);
 }
 
 @layer base {
@@ -63,14 +135,15 @@
     background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-inter), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
   ::selection {
-    background: rgba(0, 0, 0, 0.08);
+    background: var(--copper-tint);
   }
 
   *:focus-visible {
-    outline: 2px solid var(--pulse);
+    outline: 2px solid rgb(17 24 39 / 0.4);
     outline-offset: 2px;
   }
 
@@ -81,9 +154,9 @@
 }
 
 @layer components {
-  /* Card — white, border, 10px radius, 20px padding, one shadow token */
+  /* Card — white, hairline border, 20px radius, one shadow token */
   .card {
-    @apply rounded-[10px] border border-border bg-surface p-5 shadow-card;
+    @apply rounded-2xl border border-border bg-card shadow-card;
   }
 
   /* Pill — status/channel badge base, compose with colour variants */

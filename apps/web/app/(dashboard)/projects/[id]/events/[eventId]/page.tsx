@@ -1,76 +1,73 @@
-export const dynamic = "force-dynamic";
-import { fetchApi } from "@/lib/api";
-import { ApiResponse, Event } from "@/types";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { PayloadBlock } from "@/app/components/PayloadBlock";
+export const dynamic = 'force-dynamic'
+import { fetchApi } from '@/lib/api'
+import type { ApiResponse, Event } from '@/types'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import { PayloadBlock } from '@/app/components/PayloadBlock'
+import { Micro, Status } from '@/app/components/Primitives'
 
-const statusDot: Record<string, string> = {
-  delivered: "bg-emerald-500",
-  failed: "bg-red-500",
-  pending: "bg-ink-4",
-};
-
-const statusText: Record<string, string> = {
-  delivered: "text-emerald-600",
-  failed: "text-red-600",
-  pending: "text-ink-4",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; eventId: string }>
+}): Promise<Metadata> {
+  const { id, eventId } = await params
+  const res = await fetchApi(`/api/v1/events/${eventId}?project_id=${id}`)
+  if (!res.ok) return { title: 'Event' }
+  const data = (await res.json()) as ApiResponse<Event>
+  const name = data.data?.event_name
+  return {
+    title: name ?? 'Event',
+    description: name
+      ? `Delivery status, payload, and attempt log for ${name}.`
+      : 'Event delivery status and payload.',
+  }
+}
 
 export default async function ProjectEventDetailPage({
   params,
 }: {
-  params: Promise<{ id: string; eventId: string }>;
+  params: Promise<{ id: string; eventId: string }>
 }) {
-  const { id: projectId, eventId } = await params;
+  const { id: projectId, eventId } = await params
 
-  const res = await fetchApi(
-    `/api/v1/events/${eventId}?project_id=${projectId}`,
-  );
+  const res = await fetchApi(`/api/v1/events/${eventId}?project_id=${projectId}`)
 
-  if (!res.ok) notFound();
+  if (!res.ok) notFound()
 
-  const response: ApiResponse<Event> = await res.json();
-  const event = response.data;
-  if (!event) notFound();
+  const response: ApiResponse<Event> = await res.json()
+  const event = response.data
+  if (!event) notFound()
 
-  const lastLog = event.logs[event.logs.length - 1];
-  const status = lastLog?.status ?? "pending";
-  const channel = lastLog?.channel ?? "—";
+  const lastLog = event.logs[event.logs.length - 1]
+  const status = lastLog?.status ?? 'pending'
+  const channel = lastLog?.channel ?? '—'
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <Link
         href={`/projects/${projectId}/events`}
-        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-4 hover:text-ink"
+        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink"
       >
-        <svg
-          className="h-4 w-4 transition-transform group-hover:-translate-x-0.5"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
+        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
         Back to events
       </Link>
 
       <div className="card mt-6">
         {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-5">
           <div>
-            <h1 className="text-[1.25rem] font-semibold text-ink">
+            <Micro>Event</Micro>
+            <h1 className="mt-1 font-mono text-xl font-semibold tracking-tight text-ink">
               {event.event_name}
             </h1>
-            <p className="mt-1 font-mono text-[13px] text-ink-4">{event.id}</p>
+            <p className="mt-1 font-mono text-xs text-ink-3">{event.id}</p>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusText[status] ?? "text-ink-4"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${statusDot[status] ?? "bg-ink-4"}`} />
-              {status}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink-4 capitalize">
+            <Status status={status} />
+            <span className="pill bg-surface-2 capitalize text-ink-3">
               {channel}
             </span>
           </div>
@@ -80,18 +77,18 @@ export default async function ProjectEventDetailPage({
         <div className="space-y-6 px-6 py-5">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <p className="mb-1.5 text-[11px] font-medium text-ink-3">User</p>
-              <p className="font-mono text-[13px] text-ink">{event.user_id}</p>
+              <Micro>User</Micro>
+              <p className="mt-1.5 font-mono text-sm text-ink">{event.user_id}</p>
             </div>
             <div>
-              <p className="mb-1.5 text-[11px] font-medium text-ink-3">Received</p>
-              <p className="text-sm text-ink">
+              <Micro>Received</Micro>
+              <p className="mt-1.5 text-sm text-ink">
                 {event.received_at
-                  ? new Date(event.received_at).toLocaleString("en-IN", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
+                  ? new Date(event.received_at).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
                     })
-                  : "—"}
+                  : '—'}
               </p>
             </div>
           </div>
@@ -105,8 +102,8 @@ export default async function ProjectEventDetailPage({
       {/* Delivery logs */}
       <div className="mt-8">
         <div className="mb-3 flex items-center gap-2">
-          <p className="text-[11px] font-medium text-ink-3">Delivery log</p>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink-4">
+          <p className="text-sm font-semibold text-ink">Delivery log</p>
+          <span className="pill bg-surface-2 font-mono text-ink-3">
             {event.logs.length}
           </span>
         </div>
@@ -115,57 +112,50 @@ export default async function ProjectEventDetailPage({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">
+                  <tr className="border-b border-border">
+                    <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                       Channel
                     </th>
-                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">
+                    <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                       Status
                     </th>
-                    <th className="px-5 py-3 text-[11px] font-medium text-ink-3">
+                    <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                       Attempt
                     </th>
-                    <th className="hidden px-5 py-3 text-[11px] font-medium text-ink-3 sm:table-cell">
+                    <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 sm:table-cell">
                       Error
                     </th>
-                    <th className="hidden px-5 py-3 text-[11px] font-medium text-ink-3 md:table-cell">
+                    <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 md:table-cell">
                       Delivered
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {event.logs.map((log) => (
                     <tr
                       key={log.id}
-                      className="transition-colors hover:bg-gray-50/80"
+                      className="transition-colors hover:bg-surface-2"
                     >
                       <td className="px-5 py-3">
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink-4 capitalize">
+                        <span className="pill bg-surface-2 capitalize text-ink-3">
                           {log.channel}
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1.5 text-xs font-medium ${statusText[log.status] ?? "text-ink-4"}`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${statusDot[log.status] ?? "bg-ink-4"}`}
-                          />
-                          {log.status}
-                        </span>
+                        <Status status={log.status} />
                       </td>
-                      <td className="px-5 py-3 tabular-nums text-ink-3">
+                      <td className="px-5 py-3 font-mono text-xs tabular-nums text-ink-2">
                         {log.attempt_number}
                       </td>
-                      <td className="hidden px-5 py-3 font-mono text-xs text-red-600 sm:table-cell">
+                      <td className="hidden px-5 py-3 font-mono text-xs text-failure sm:table-cell">
                         {log.error_message ?? (
                           <span className="text-ink-4">&mdash;</span>
                         )}
                       </td>
-                      <td className="hidden whitespace-nowrap px-5 py-3 text-xs tabular-nums text-ink-4 md:table-cell">
-                        {new Date(log.delivered_at).toLocaleString("en-IN", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
+                      <td className="hidden whitespace-nowrap px-5 py-3 text-xs tabular-nums text-ink-3 md:table-cell">
+                        {new Date(log.delivered_at).toLocaleString('en-IN', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
                         })}
                       </td>
                     </tr>
@@ -178,7 +168,7 @@ export default async function ProjectEventDetailPage({
               <p className="text-sm font-medium text-ink">
                 No delivery attempts yet
               </p>
-              <p className="mt-1 text-xs text-ink-4">
+              <p className="mt-1 text-xs text-ink-3">
                 The worker will log delivery here shortly after the event is
                 processed.
               </p>
@@ -187,5 +177,5 @@ export default async function ProjectEventDetailPage({
         </div>
       </div>
     </div>
-  );
+  )
 }
