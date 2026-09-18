@@ -123,6 +123,7 @@ export const markAllRead = async (
 ) => {
   const user_id = req.userId;
   const project_id = req.query.project_id as string;
+  const recipient_user_id = (req.query.user_id as string) || user_id;
 
   if (!project_id) {
     return res.status(400).json({
@@ -150,7 +151,7 @@ export const markAllRead = async (
       `UPDATE notifications
       SET read = true
       WHERE project_id = $1 AND user_id = $2 AND read = false`,
-      [project_id, user_id],
+      [project_id, recipient_user_id],
     );
 
     return res.json({

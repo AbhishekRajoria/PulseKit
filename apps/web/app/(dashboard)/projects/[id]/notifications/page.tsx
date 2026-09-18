@@ -134,11 +134,11 @@ export default function NotificationsPage() {
     setMarkingAll(true)
     try {
       const res = await fetch(
-        `/api/notifications/read-all?project_id=${projectId}`,
+        `/api/notifications/read-all?project_id=${projectId}&user_id=${encodeURIComponent(
+          userId,
+        )}`,
         {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId }),
         },
       )
       const data: ApiResponse<{ count: number }> = await res.json()

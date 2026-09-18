@@ -13,6 +13,7 @@ export async function PATCH(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("project_id");
+  const recipientUserId = searchParams.get("user_id");
 
   if (!projectId) {
     return Response.json(
@@ -21,8 +22,12 @@ export async function PATCH(req: Request) {
     );
   }
 
+  const query = `?project_id=${projectId}${
+    recipientUserId ? `&user_id=${encodeURIComponent(recipientUserId)}` : ""
+  }`;
+
   const res = await fetch(
-    `${process.env.API_URL}/api/v1/notifications/read-all?project_id=${projectId}`,
+    `${process.env.API_URL}/api/v1/notifications/read-all${query}`,
     {
       method: "PATCH",
       headers: { Cookie: `userId=${userId}` },
