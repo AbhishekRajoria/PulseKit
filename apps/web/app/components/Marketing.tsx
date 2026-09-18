@@ -21,6 +21,21 @@ import logout from '@/app/actions/logout'
 
 export function MarketingHeader({ authed }: { authed: boolean }) {
   const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('header')) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onDown)
+    }
+  }, [open])
   const desktopCta = authed ? (
     <Link
       href="/projects"
@@ -93,7 +108,7 @@ export function MarketingHeader({ authed }: { authed: boolean }) {
           type="button"
           className="cursor-pointer rounded-md p-1.5 text-ink-2 transition-colors hover:bg-surface-2 md:hidden"
           onClick={() => setOpen((o) => !o)}
-          aria-label="Open menu"
+          aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
           aria-controls="mobile-nav"
         >
@@ -106,6 +121,7 @@ export function MarketingHeader({ authed }: { authed: boolean }) {
             <Link
               key={to}
               href={to}
+              onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-2"
             >
               {label}
