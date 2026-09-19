@@ -29,11 +29,18 @@ export type Notification = {
   created_at: string;
 };
 
+export type ProjectChannels = {
+  email?: { to?: string };
+  slack?: { webhook_url?: string };
+  inapp?: Record<string, never>;
+};
+
 export type Project = {
   id: string;
   user_id: string;
   name: string;
   rate_limit_per_min: number;
+  channels?: ProjectChannels;
   created_at: string;
 };
 

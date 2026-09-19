@@ -169,7 +169,7 @@ export const getProjectById = async (
     const id = req.params.id;
 
     const result = await pool.query(
-      `SELECT id, user_id, name, rate_limit_per_min, created_at
+      `SELECT id, user_id, name, rate_limit_per_min, channels, created_at
       FROM projects
       WHERE user_id=$1 AND id=$2`,
       [user_id, id],
@@ -272,6 +272,146 @@ export const updateProject = async (
     return res.status(500).json({
       success: false,
       error: "Failed to update project",
+    });
+  }
+};
+
+export const updateChannels = async (
+  req: Request,
+  res: Response<ApiResponse<{ channels: Project["channels"] }>>,
+) => {
+  try {
+    const user_id = req.userId;
+    const { id } = req.params;
+    const body = req.body ?? {};
+
+    if (typeof body !== "object" || Array.isArray(body)) {
+      return res.status(400).json({
+        success: false,
+        error: "Body must be an object",
+      });
+    }
+
+    const allowed = ["email", "slack", "inapp"];
+    const requested = Object.keys(body).filter(
+      (k) => body[k] !== undefined,
+    );
+
+    if (requested.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No channels to update",
+      });
+    }
+
+    const unknown = requested.filter((k) => !allowed.includes(k));
+    if (unknown.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Unknown channel${unknown.length > 1 ? "s" : ""}: ${unknown.join(", ")}`,
+        code: "UNKNOWN_CHANNEL",
+      });
+    }
+
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    for (const channel of requested) {
+      const config = body[channel] ?? {};
+      if (typeof config !== "object" || Array.isArray(config)) {
+        return res.status(400).json({
+          success: false,
+          error: `Config for ${channel} must be an object`,
+        });
+      }
+
+      if (channel === "email" && config.to !== undefined) {
+        if (typeof config.to !== "string" || !emailRe.test(config.to.trim())) {
+          return res.status(400).json({
+            success: false,
+            error: "A valid email address is required for the email channel",
+            code: "INVALID_EMAIL",
+          });
+        }
+      }
+
+      if (channel === "slack" && config.webhook_url !== undefined) {
+        if (
+          typeof config.webhook_url !== "string" ||
+          !config.webhook_url.trim().startsWith("https://")
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: "Slack webhook URL must start with https://",
+            code: "INVALID_WEBHOOK_URL",
+          });
+        }
+      }
+    }
+
+    const existing = await pool.query(
+      `SELECT channels FROM projects WHERE user_id=$1 AND id=$2`,
+      [user_id, id],
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Project ${id} doesn't exist`,
+        code: "NOT_FOUND",
+      });
+    }
+
+    const current = (existing.rows[0].channels ?? {}) as Record<
+      string,
+      Record<string, unknown> | undefined
+    >;
+    const next = { ...current };
+
+    for (const channel of requested) {
+      const config = body[channel] ?? {};
+      const enabled = config.enabled ?? true;
+
+      if (enabled === false) {
+        delete next[channel];
+        continue;
+      }
+
+      const merged = { ...(next[channel] ?? {}) };
+
+      for (const [field, value] of Object.entries(config)) {
+        if (field === "enabled") continue;
+        if (value === undefined) continue;
+        merged[field] =
+          typeof value === "string" ? value.trim() : value;
+      }
+
+      next[channel] = merged;
+    }
+
+    const result = await pool.query(
+      `UPDATE projects
+      SET channels = $1
+      WHERE user_id = $2 AND id = $3
+      RETURNING id, user_id, name, rate_limit_per_min, channels, created_at`,
+      [JSON.stringify(next), user_id, id],
+    );
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Failed to update project channels:", error);
+    if (error instanceof Error && "code" in error) {
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+        code: error.code as string,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update project channels",
     });
   }
 };

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { BellDot, CheckCheck, ChevronDown, LoaderCircle } from 'lucide-react'
 import type { ApiResponse, Notification } from '@/types'
+import { ProjectTabs } from '@/app/components/ProjectTabs'
 
 type NotificationsResponse = {
   notifications: Notification[]
@@ -174,7 +175,9 @@ export default function NotificationsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex items-center gap-2">
+      <ProjectTabs projectId={projectId} />
+
+      <div className="mt-6 flex items-center gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Notifications
         </h1>

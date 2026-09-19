@@ -6,6 +6,7 @@ import {
   getProjects,
   getProjectStats,
   revealApiKey,
+  updateChannels,
   updateProject,
 } from "../controllers/project.controller.ts";
 
@@ -16,6 +17,7 @@ router.post("/", createProject);
 router.get("/:id", getProjectById);
 router.get("/:id/stats", getProjectStats);
 router.patch("/:id", updateProject);
+router.patch("/:id/channels", updateChannels);
 router.delete("/:id", deleteProject);
 router.post("/:id/reveal-key", revealApiKey);
 

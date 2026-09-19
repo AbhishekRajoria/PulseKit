@@ -62,3 +62,116 @@ describe("GET /api/v1/projects/:id", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("PATCH /api/v1/projects/:id/channels", () => {
+  it("401s without auth", async () => {
+    const res = await request(app)
+      .patch("/api/v1/projects/some-id/channels")
+      .send({ email: { enabled: true } });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("enables email with a valid to address", async () => {
+    const agent = await loginUser("channels1@test.com");
+    const created = await createProject(agent);
+    const id = created.body.data.id;
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ email: { enabled: true, to: "dev@example.com" } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.channels.email).toEqual({ to: "dev@example.com" });
+  });
+
+  it("merges instead of replacing untouched channels", async () => {
+    const agent = await loginUser("channels2@test.com");
+    const created = await createProject(agent);
+    const id = created.body.data.id;
+
+    await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ email: { enabled: true, to: "dev@example.com" } });
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ slack: { enabled: true, webhook_url: "https://hooks.slack.com/abc" } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.channels.email).toEqual({ to: "dev@example.com" });
+    expect(res.body.data.channels.slack).toEqual({
+      webhook_url: "https://hooks.slack.com/abc",
+    });
+  });
+
+  it("removes a channel key entirely when disabled", async () => {
+    const agent = await loginUser("channels3@test.com");
+    const created = await createProject(agent);
+    const id = created.body.data.id;
+
+    await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ email: { enabled: true, to: "dev@example.com" } });
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ email: { enabled: false } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.channels.email).toBeUndefined();
+  });
+
+  it("400s on an invalid email to address", async () => {
+    const agent = await loginUser("channels4@test.com");
+    const created = await createProject(agent);
+    const id = created.body.data.id;
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ email: { enabled: true, to: "not-an-email" } });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("INVALID_EMAIL");
+  });
+
+  it("400s on a non-https slack webhook", async () => {
+    const agent = await loginUser("channels5@test.com");
+    const created = await createProject(agent);
+    const id = created.body.data.id;
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ slack: { enabled: true, webhook_url: "http://hooks.slack.com/abc" } });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("INVALID_WEBHOOK_URL");
+  });
+
+  it("400s on an unknown channel", async () => {
+    const agent = await loginUser("channels6@test.com");
+    const created = await createProject(agent);
+    const id = created.body.data.id;
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}/channels`)
+      .send({ sms: { enabled: true } });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("UNKNOWN_CHANNEL");
+  });
+
+  it("404s when another user tries to configure a project's channels", async () => {
+    const agent1 = await loginUser("channels7@test.com");
+    const agent2 = await loginUser("channels8@test.com");
+
+    const created = await createProject(agent1);
+
+    const res = await agent2
+      .patch(`/api/v1/projects/${created.body.data.id}/channels`)
+      .send({ email: { enabled: true, to: "dev@example.com" } });
+
+    expect(res.status).toBe(404);
+  });
+});

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ArrowLeft, ChevronRight, Activity, Bell } from 'lucide-react'
 import { RevealKey } from './reveal-key'
 import { Micro } from '@/app/components/Primitives'
+import { ProjectTabs } from '@/app/components/ProjectTabs'
 
 export async function generateMetadata({
   params,
@@ -80,6 +81,8 @@ export default async function ProjectDetailPage({
           </div>
         </div>
       </div>
+
+      <ProjectTabs projectId={id} />
 
       <div className="mt-6">
         <RevealKey projectId={project.id} />
