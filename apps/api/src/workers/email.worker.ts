@@ -227,7 +227,13 @@ const worker = new Worker(
       }
     }
   },
-  { connection },
+  {
+    connection,
+    drainDelay: 300,
+    lockDuration: 60_000,
+    lockRenewTime: 30_000,
+    stalledInterval: 120_000,
+  },
 );
 
 // fires ONLY on catastrophic failures (config read / DB down) —
@@ -237,7 +243,14 @@ worker.on("failed", async (job, err) => {
 
   // 2) On exhaustion only: DLQ + sentinel
   if ((job.attemptsMade ?? 0) >= (job.opts.attempts ?? 0)) {
-    await dlq.add("email", job.data);
+    await dlq.add(
+      "email",
+      job.data,
+      {
+        removeOnComplete: 10,
+        removeOnFail: 100,
+      },
+    );
     await pool.query(
       `INSERT INTO delivery_logs (event_id, project_id, channel, status, attempt_number, error_message) VALUES ($1, $2, $3, $4, $5, $6)`,
       [

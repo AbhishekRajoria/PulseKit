@@ -112,6 +112,8 @@ export const notify = async (
           type: "exponential",
           delay: 2000 * (0.8 + Math.random() * 0.4),
         },
+        removeOnComplete: { count: 50 },
+        removeOnFail: { count: 25 },
       },
     );
 
