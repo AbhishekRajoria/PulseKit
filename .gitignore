@@ -40,3 +40,6 @@ secret.txt
 # Content
 Content
 apps/web/DESIGN-BLUEPRINT.md
+
+# Redis debugging artifacts
+redis-monitor.csv
