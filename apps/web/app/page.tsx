@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { Brand, CopyButton, LiveDot, Micro, Mono, Stat } from '@/app/components/Primitives'
 import { LandingLiveFeed, LandingTerminal, MarketingHeader } from '@/app/components/Marketing'
-import { isAuthenticated } from '@/lib/session'
 
 export const metadata: Metadata = {
   title: 'PulseKit — Notify your users. One API call.',
@@ -94,10 +93,9 @@ const infoCards = [
 ]
 
 export default async function Home() {
-  const authed = await isAuthenticated()
   return (
     <main id="main-content" className="min-h-screen bg-canvas text-ink">
-      <MarketingHeader authed={authed} />
+      <MarketingHeader />
 
       {/* Hero */}
       <section className="border-b border-border px-5 py-20 sm:py-28 lg:px-8">

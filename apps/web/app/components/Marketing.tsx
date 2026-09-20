@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   Bell,
@@ -12,15 +13,25 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Brand, LiveDot, Mono, Status } from './Primitives'
+import { Brand, LinkPending, LiveDot, Mono, Status } from './Primitives'
 import logout from '@/app/actions/logout'
 
 // -----------------------------------------------------------------------
 // Shared marketing header (landing, docs, guide)
 // -----------------------------------------------------------------------
+// Resolves auth client-side so these pages stay statically prerendered —
+// server-side cookie reads would force them dynamic on every navigation.
 
-export function MarketingHeader({ authed }: { authed: boolean }) {
+export function MarketingHeader() {
   const [open, setOpen] = useState(false)
+  const [authed, setAuthed] = useState(false)
+  const pathname = usePathname()
+  useEffect(() => {
+    // document.cookie is external state unknown at static prerender, so it
+    // can't be derived during render — re-check on mount and route changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAuthed(typeof document !== 'undefined' && document.cookie.includes('userId='))
+  }, [pathname])
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -39,23 +50,29 @@ export function MarketingHeader({ authed }: { authed: boolean }) {
   const desktopCta = authed ? (
     <Link
       href="/projects"
-      className="rounded-lg bg-primary-action px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
+      prefetch
+      className="relative rounded-lg bg-primary-action px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
     >
       Dashboard
+      <LinkPending />
     </Link>
   ) : (
     <>
       <Link
         href="/login"
-        className="rounded-md px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+        prefetch
+        className="relative rounded-md px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
       >
         Log in
+        <LinkPending />
       </Link>
       <Link
         href="/signup"
-        className="rounded-lg bg-primary-action px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
+        prefetch
+        className="relative rounded-lg bg-primary-action px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
       >
         Sign up
+        <LinkPending />
       </Link>
     </>
   )
@@ -92,15 +109,19 @@ export function MarketingHeader({ authed }: { authed: boolean }) {
           </a>
           <Link
             href="/docs"
-            className="rounded-md px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+            prefetch
+            className="relative rounded-md px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
           >
             Docs
+            <LinkPending />
           </Link>
           <Link
             href="/guide"
-            className="rounded-md px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+            prefetch
+            className="relative rounded-md px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
           >
             Architecture
+            <LinkPending />
           </Link>
           {desktopCta}
         </nav>
@@ -121,10 +142,12 @@ export function MarketingHeader({ authed }: { authed: boolean }) {
             <Link
               key={to}
               href={to}
+              prefetch
               onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-2"
+              className="relative rounded-md px-3 py-2 text-sm text-ink-2 transition-colors hover:bg-surface-2"
             >
               {label}
+              <LinkPending />
             </Link>
           ))}
           {authed && (

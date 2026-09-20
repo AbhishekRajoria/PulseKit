@@ -1,7 +1,6 @@
 import { Code } from '@/app/components/Primitives'
 import type { Metadata } from 'next'
 import { MarketingHeader } from '@/app/components/Marketing'
-import { isAuthenticated } from '@/lib/session'
 import {
   AnchorNav,
   DocP,
@@ -64,10 +63,9 @@ const responseCode = `// 202 Accepted
 }`
 
 export default async function DocsPage() {
-  const authed = await isAuthenticated()
   return (
     <main id="main-content" className="min-h-screen bg-canvas text-ink">
-      <MarketingHeader authed={authed} />
+      <MarketingHeader />
       <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8 lg:py-20">
         <PageHeader
           meta="Docs"
