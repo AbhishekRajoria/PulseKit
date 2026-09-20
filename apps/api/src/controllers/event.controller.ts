@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { pool } from "../db.ts";
 import type { ApiResponse, DeliveryRow, EventRow } from "../types/index.ts";
 import { emailQueue } from "../lib/queue.ts";
+import { redis } from "../lib/redis.ts";
 
 export const getAllEvents = async (
   req: Request,
@@ -115,6 +116,20 @@ export const notify = async (
         removeOnComplete: { count: 50 },
         removeOnFail: { count: 25 },
       },
+    );
+
+    redis.publish(
+      "delivery_updates",
+      JSON.stringify({
+        type: "event_received",
+        data: {
+          eventId: result.rows[0].id,
+          projectId: project_id,
+          eventName: event_name,
+          userId: user_id,
+          receivedAt: result.rows[0].received_at,
+        },
+      }),
     );
 
     return res.status(202).json({

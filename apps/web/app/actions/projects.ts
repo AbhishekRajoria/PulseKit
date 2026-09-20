@@ -1,6 +1,7 @@
 "use server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function createProject(
   _prevState: { error?: string; success?: boolean; apiKey?: string; projectId?: string },
@@ -81,4 +82,98 @@ export async function revealApiKey(
   }
 
   return { apiKey: data.data.api_key as string };
+}
+
+export async function updateProject(
+  projectId: string,
+  _prevState: { error?: string; success?: boolean },
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const name = (formData.get("name") as string)?.trim();
+
+  if (!name) {
+    return { error: "Project name is required" };
+  }
+
+  const rawRate = formData.get("rate_limit_per_min");
+  let rate_limit_per_min: number | undefined;
+  if (rawRate && rawRate !== "") {
+    rate_limit_per_min = Number(rawRate);
+    if (
+      Number.isNaN(rate_limit_per_min) ||
+      rate_limit_per_min < 5 ||
+      rate_limit_per_min > 30
+    ) {
+      return { error: "Rate limit must be between 5 and 30 requests/min" };
+    }
+  }
+
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("userId")?.value;
+
+  const res = await fetch(
+    `${process.env.API_URL}/api/v1/projects/${projectId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(cookie ? { Cookie: `userId=${cookie}` } : {}),
+      },
+      body: JSON.stringify(
+        rate_limit_per_min !== undefined ? { name, rate_limit_per_min } : { name },
+      ),
+    },
+  );
+
+  const data = await res.json();
+
+  if (!data.success) {
+    return { error: data.error ?? "Failed to update project" };
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { success: true };
+}
+
+export async function deleteProject(
+  projectId: string,
+  projectName: string,
+  _prevState: { error?: string },
+  formData: FormData,
+): Promise<{ error?: string }> {
+  const confirm = (formData.get("confirm") as string)?.trim();
+
+  if (confirm !== projectName) {
+    return { error: "Enter the project name to confirm deletion" };
+  }
+
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("userId")?.value;
+
+  const res = await fetch(
+    `${process.env.API_URL}/api/v1/projects/${projectId}`,
+    {
+      method: "DELETE",
+      headers: {
+        ...(cookie ? { Cookie: `userId=${cookie}` } : {}),
+      },
+    },
+  );
+
+  if (res.status === 204) {
+    revalidatePath("/projects");
+    redirect("/projects");
+  }
+
+  try {
+    const data = await res.json();
+    if (!data.success) {
+      return { error: data.error ?? "Failed to delete project" };
+    }
+  } catch {
+    return { error: "Failed to delete project" };
+  }
+
+  return {};
 }

@@ -10,8 +10,10 @@ import {
   ChevronDown,
   ChevronRight,
   FolderKanban,
+  Gauge,
 } from 'lucide-react'
 import { Brand, Micro } from '@/app/components/Primitives'
+import { LogoutButton } from './LogoutButton'
 
 type NavItem = {
   href: string
@@ -109,6 +111,11 @@ export function Sidebar({
 
   const projectItems: NavItem[] = resolvedProjectId
     ? [
+        {
+          href: `/projects/${resolvedProjectId}`,
+          label: 'Overview',
+          icon: <Gauge className="h-4 w-4" />,
+        },
         {
           href: `/projects/${resolvedProjectId}/events`,
           label: 'Events',
@@ -271,6 +278,13 @@ export function Sidebar({
             </>
           )}
         </nav>
+
+        {/* Footer — sign out */}
+        <div className="shrink-0 border-t border-border p-3">
+          <div className={expanded ? '' : 'flex justify-center'}>
+            <LogoutButton />
+          </div>
+        </div>
       </aside>
     </>
   )

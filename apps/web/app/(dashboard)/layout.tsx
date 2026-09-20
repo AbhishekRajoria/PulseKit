@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
-import { LogoutButton } from './components/LogoutButton'
 
 function HeaderLink({
   href,
@@ -69,9 +68,6 @@ export default function DashboardLayout({
             <HeaderLink href="/guide">Guide</HeaderLink>
             <HeaderLink href="/projects">Projects</HeaderLink>
           </nav>
-          <div className="flex items-center gap-2">
-            <LogoutButton />
-          </div>
         </header>
 
         {/* Content area */}

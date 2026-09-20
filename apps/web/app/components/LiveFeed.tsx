@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 type DeliveryUpdate = {
   eventId: string
   projectId: string
-  channel: 'email' | 'slack' | 'webhook' | 'inapp'
-  status: 'delivered' | 'failed' | 'sentinel'
+  channel: 'email' | 'slack' | 'webhook' | 'inapp' | 'incoming'
+  status: 'delivered' | 'failed' | 'sentinel' | 'received'
   deliveredAt: string
 }
 
@@ -49,6 +49,26 @@ export function LiveFeed({ projectId }: { projectId: string }) {
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data)
+          if (msg.type === 'event_received') {
+            const data = msg.data as {
+              eventId: string
+              projectId: string
+              eventName: string
+              receivedAt: string
+            }
+            if (data.projectId !== projectId) return
+            setUpdates((prev) => [
+              {
+                eventId: data.eventId,
+                projectId,
+                channel: 'incoming' as const,
+                status: 'received' as const,
+                deliveredAt: data.receivedAt,
+              },
+              ...prev,
+            ])
+            return
+          }
           if (msg.type !== 'delivery_update') return
           const data = msg.data as DeliveryUpdate
           if (data.projectId !== projectId) return
@@ -137,7 +157,9 @@ export function LiveFeed({ projectId }: { projectId: string }) {
                       ? 'text-copper'
                       : u.status === 'failed'
                         ? 'text-failure'
-                        : 'text-ink-3'
+                        : u.status === 'received'
+                          ? 'text-pending'
+                          : 'text-ink-3'
                   }`}
                 >
                   <span
@@ -146,7 +168,9 @@ export function LiveFeed({ projectId }: { projectId: string }) {
                         ? 'bg-copper'
                         : u.status === 'failed'
                           ? 'bg-failure'
-                          : 'bg-ink-3'
+                          : u.status === 'received'
+                            ? 'bg-pending'
+                            : 'bg-ink-3'
                     }`}
                   />
                   {u.status}

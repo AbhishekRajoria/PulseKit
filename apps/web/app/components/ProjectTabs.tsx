@@ -8,6 +8,7 @@ const tabs = [
   { href: `/projects`, label: 'Events', snippet: '/events' },
   { href: `/projects`, label: 'Notifications', snippet: '/notifications' },
   { href: `/projects`, label: 'Channels', snippet: '/channels' },
+  { href: `/projects`, label: 'Settings', snippet: '/settings' },
 ]
 
 export function ProjectTabs({ projectId }: { projectId: string }) {

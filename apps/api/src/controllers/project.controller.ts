@@ -424,11 +424,20 @@ export const deleteProject = async (
     const user_id = req.userId;
     const { id } = req.params;
 
-    await pool.query(
+    const result = await pool.query(
       `DELETE FROM projects
-    WHERE user_id=$1 AND id=$2`,
+    WHERE user_id=$1 AND id=$2
+    RETURNING id`,
       [user_id, id],
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Project ${id} doesn't exist`,
+        code: "NOT_FOUND",
+      });
+    }
 
     return res.status(204).json({
       success: true,

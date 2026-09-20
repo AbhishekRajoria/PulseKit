@@ -3,6 +3,7 @@ import app from "../app.ts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { truncateTables } from "../../vitest.setup.ts";
 import { createProject, loginUser } from "./helpers.ts";
+import { pool } from "../db.ts";
 
 beforeEach(async () => truncateTables());
 
@@ -173,5 +174,95 @@ describe("PATCH /api/v1/projects/:id/channels", () => {
       .send({ email: { enabled: true, to: "dev@example.com" } });
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe("PATCH /api/v1/projects/:id", () => {
+  it("renames a project and updates its rate limit", async () => {
+    const agent = await loginUser("proj-patch1@test.com");
+    const project = await createProject(agent, "Old Name");
+    const id = project.body.data.id;
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}`)
+      .send({ name: "New Name", rate_limit_per_min: 15 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe("New Name");
+    expect(res.body.data.rate_limit_per_min).toBe(15);
+  });
+
+  it("400s when rate limit is out of range", async () => {
+    const agent = await loginUser("proj-patch2@test.com");
+    const project = await createProject(agent);
+    const id = project.body.data.id;
+
+    const res = await agent
+      .patch(`/api/v1/projects/${id}`)
+      .send({ rate_limit_per_min: 100 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when there is nothing to update", async () => {
+    const agent = await loginUser("proj-patch3@test.com");
+    const project = await createProject(agent);
+    const id = project.body.data.id;
+
+    const res = await agent.patch(`/api/v1/projects/${id}`).send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it("404s when another user tries to update the project", async () => {
+    const agent1 = await loginUser("proj-patch-owner@test.com");
+    const agent2 = await loginUser("proj-patch-other@test.com");
+    const project = await createProject(agent1);
+    const id = project.body.data.id;
+
+    const res = await agent2
+      .patch(`/api/v1/projects/${id}`)
+      .send({ name: "Hijack" });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/v1/projects/:id", () => {
+  it("deletes the project and cascades its events", async () => {
+    const agent = await loginUser("proj-del1@test.com");
+    const project = await createProject(agent);
+    const id = project.body.data.id;
+
+    const ingest = await request(app)
+      .post("/api/v1/events")
+      .set("Authorization", `Bearer ${project.body.data.api_key}`)
+      .send({ event_name: "payment.failed", user_id: "user_1" });
+    expect(ingest.status).toBe(202);
+
+    const del = await agent.delete(`/api/v1/projects/${id}`);
+    expect(del.status).toBe(204);
+
+    const get = await agent.get(`/api/v1/projects/${id}`);
+    expect(get.status).toBe(404);
+
+    const events = await pool.query(
+      `SELECT COUNT(*)::int AS c FROM events WHERE project_id=$1`,
+      [id],
+    );
+    expect(events.rows[0].c).toBe(0);
+  });
+
+  it("404s when another user deletes (nothing deleted)", async () => {
+    const agent1 = await loginUser("proj-del-owner@test.com");
+    const agent2 = await loginUser("proj-del-other@test.com");
+    const project = await createProject(agent1);
+    const id = project.body.data.id;
+
+    const res = await agent2.delete(`/api/v1/projects/${id}`);
+    expect(res.status).toBe(404);
+
+    const stillThere = await agent1.get(`/api/v1/projects/${id}`);
+    expect(stillThere.status).toBe(200);
   });
 });

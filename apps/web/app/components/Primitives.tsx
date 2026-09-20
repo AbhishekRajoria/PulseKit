@@ -91,7 +91,7 @@ const statusColor: Record<string, string> = {
   failed: 'text-failure',
   pending: 'text-pending',
   deduplicated: 'text-ink-3',
-  rate_limited: 'text-pending',
+  rate_limited: 'text-status-rate',
 }
 
 const statusLabel: Record<string, string> = {

@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 
 export function proxy(request: NextRequest) {
   const userIdCookie = request.cookies.get("userId");
+  const path = request.nextUrl.pathname;
 
-  if (request.nextUrl.pathname == "/login" && userIdCookie) {
-    return NextResponse.redirect(new URL("/projects", request.url));
+  if (path === "/login" || path === "/signup") {
+    if (userIdCookie) {
+      return NextResponse.redirect(new URL("/projects", request.url));
+    }
+    return NextResponse.next();
   }
 
-  if (!userIdCookie && request.nextUrl.pathname != "/login")
+  if (!userIdCookie) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
 
   return NextResponse.next();
 }
@@ -19,5 +24,6 @@ export const config = {
     "/login/:path*",
     "/notifications/:path*",
     "/projects/:path*",
+    "/signup/:path*",
   ],
 };
