@@ -29,8 +29,10 @@ export function MarketingHeader() {
   useEffect(() => {
     // document.cookie is external state unknown at static prerender, so it
     // can't be derived during render — re-check on mount and route changes.
+    // pk_ui is a non-httpOnly presence marker set next to the real session
+    // cookie; the httpOnly userId cookie is invisible to document.cookie.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAuthed(typeof document !== 'undefined' && document.cookie.includes('userId='))
+    setAuthed(typeof document !== 'undefined' && document.cookie.includes('pk_ui='))
   }, [pathname])
   useEffect(() => {
     if (!open) return

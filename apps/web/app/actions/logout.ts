@@ -12,6 +12,7 @@ export default async function logout(_formData: FormData): Promise<void> {
 
   const cookieStore = await cookies();
   cookieStore.delete("userId");
+  cookieStore.delete("pk_ui");
 
   redirect("/login");
 }

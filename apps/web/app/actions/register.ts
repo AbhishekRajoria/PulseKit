@@ -47,6 +47,14 @@ export default async function register(
       path: '/',
       maxAge: 7 * 24 * 60 * 60,
     })
+    // Non-httpOnly presence marker so static/clientside UI (marketing pages)
+    // can detect the session via document.cookie without exposing the real token.
+    cookieStore.set('pk_ui', '1', {
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60,
+    })
   } catch {
     return {
       success: false,
