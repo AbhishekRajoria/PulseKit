@@ -72,8 +72,33 @@ export const getNotificationsByProject = async (
   req: Request,
   res: Response<ApiResponse<NotificationResponse>>,
 ) => {
-  req.project_id = req.params.projectId as string;
-  return getNotifications(req, res);
+  const user_id = req.userId;
+  const project_id = req.params.projectId as string;
+
+  try {
+    const ownership = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND user_id = $2`,
+      [project_id, user_id],
+    );
+
+    if (ownership.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Project not found",
+        code: "NOT_FOUND",
+      });
+    }
+
+    req.project_id = project_id;
+    return getNotifications(req, res);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch notifications.",
+      code: "DB_ERROR",
+    });
+  }
 };
 
 export const getNotifications = async (
