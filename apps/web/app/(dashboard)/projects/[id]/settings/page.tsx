@@ -3,7 +3,6 @@ import { fetchApi } from '@/lib/api'
 import type { ApiResponse, Project } from '@/types'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { ProjectTabs } from '@/app/components/ProjectTabs'
 import { SettingsForm } from './settings-form'
 
 export async function generateMetadata({
@@ -38,8 +37,6 @@ export default async function ProjectSettingsPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
-      <ProjectTabs projectId={id} />
-
       <div className="mt-6 flex items-center gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Settings

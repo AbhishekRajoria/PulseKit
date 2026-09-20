@@ -11,6 +11,8 @@ import {
   ChevronRight,
   FolderKanban,
   Gauge,
+  Settings,
+  Webhook,
 } from 'lucide-react'
 import { Brand, LinkPending, Micro } from '@/app/components/Primitives'
 import { LogoutButton } from './LogoutButton'
@@ -125,6 +127,16 @@ export function Sidebar({
           href: `/projects/${resolvedProjectId}/notifications`,
           label: 'Notifications',
           icon: <Bell className="h-4 w-4" />,
+        },
+        {
+          href: `/projects/${resolvedProjectId}/channels`,
+          label: 'Channels',
+          icon: <Webhook className="h-4 w-4" />,
+        },
+        {
+          href: `/projects/${resolvedProjectId}/settings`,
+          label: 'Settings',
+          icon: <Settings className="h-4 w-4" />,
         },
       ]
     : []

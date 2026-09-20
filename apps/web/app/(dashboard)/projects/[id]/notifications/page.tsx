@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { BellDot, CheckCheck, ChevronDown, LoaderCircle } from 'lucide-react'
 import type { ApiResponse, Notification } from '@/types'
-import { ProjectTabs } from '@/app/components/ProjectTabs'
 
 type NotificationsResponse = {
   notifications: Notification[]
@@ -175,8 +174,6 @@ export default function NotificationsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <ProjectTabs projectId={projectId} />
-
       <div className="mt-6 flex items-center gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Notifications
@@ -189,10 +186,10 @@ export default function NotificationsPage() {
         In-app messages delivered to end users.
       </p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
+      <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card lg:grid lg:grid-cols-[256px_1fr]">
         {/* User list */}
-        <aside className="card h-fit overflow-hidden lg:sticky lg:top-24">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <aside className="h-fit overflow-hidden border-r border-border bg-canvas/40 lg:sticky lg:top-24">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
               Inboxes
             </h2>
@@ -236,9 +233,9 @@ export default function NotificationsPage() {
                         setUserId(u.user_id)
                         setExpandedId(null)
                       }}
-                      className={`flex w-full cursor-pointer items-center gap-3 border-l-2 px-5 py-4 text-left transition-colors ${
+                      className={`flex w-full cursor-pointer items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors ${
                         active
-                          ? 'border-l-copper bg-copper-tint'
+                          ? 'border-l-copper bg-card'
                           : 'border-l-transparent hover:bg-surface-2'
                       }`}
                     >
@@ -267,14 +264,19 @@ export default function NotificationsPage() {
         </aside>
 
         {/* Feed */}
-        <section className="card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+        <section className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <h2 className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                 {notifs
                   ? `${notifs.notifications.length} ${notifs.notifications.length === 1 ? 'notification' : 'notifications'}`
                   : 'Notifications'}
               </h2>
+              {userId && (
+                <code className="truncate font-mono text-[11px] text-ink-3">
+                  {userId}
+                </code>
+              )}
               {notifs && notifs.unread_count > 0 && (
                 <span className="pill bg-copper-tint font-mono text-copper tabular-nums">
                   {notifs.unread_count} unread
@@ -343,8 +345,8 @@ export default function NotificationsPage() {
                     <button
                       type="button"
                       onClick={() => handleRowClick(n)}
-                      className={`group flex w-full cursor-pointer items-start gap-3 border-l-2 px-5 py-4 text-left transition-colors hover:bg-surface-2 ${
-                        !n.read ? 'border-l-copper bg-copper-tint/40' : 'border-l-transparent'
+                      className={`group flex w-full cursor-pointer items-start gap-3 border-l-2 px-4 py-4 text-left transition-colors hover:bg-canvas ${
+                        !n.read ? 'border-l-copper bg-card' : 'border-l-transparent'
                       }`}
                     >
                       <span className="min-w-0 flex-1">

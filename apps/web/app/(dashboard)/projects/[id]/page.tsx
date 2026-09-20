@@ -4,10 +4,15 @@ import type { ApiResponse, Project, ProjectStats } from '@/types'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ChevronRight, Activity, Bell } from 'lucide-react'
-import { RevealKey } from './reveal-key'
-import { Micro } from '@/app/components/Primitives'
-import { ProjectTabs } from '@/app/components/ProjectTabs'
+import {
+  ArrowLeft,
+  ChevronRight,
+  Activity,
+  Bell,
+  Check,
+  KeyRound,
+} from 'lucide-react'
+import { CopyButton, Micro } from '@/app/components/Primitives'
 
 export async function generateMetadata({
   params,
@@ -26,6 +31,8 @@ export async function generateMetadata({
       : 'PulseKit project overview.',
   }
 }
+
+const apiUrl = (process.env.API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 export default async function ProjectDetailPage({
   params,
@@ -46,8 +53,15 @@ export default async function ProjectDetailPage({
     ? ((await statsRes.json()) as ApiResponse<ProjectStats>).data ?? null
     : null
 
+  const hasSignal = (stats?.event_count ?? 0) > 0
+
+  const curlSnippet = `curl -X POST ${apiUrl}/api/v1/events \\
+  -H "Authorization: Bearer $PULSEKIT_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"event_name":"payment.failed","user_id":"user_123","payload":{"amount":9900,"currency":"INR"}}'`
+
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
+    <div className="mx-auto max-w-4xl">
       <Link
         href="/projects"
         className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink"
@@ -57,12 +71,17 @@ export default async function ProjectDetailPage({
       </Link>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <Micro>Project</Micro>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
-            {project.name}
-          </h1>
-          <p className="mt-1 font-mono text-xs text-ink-3">{project.id}</p>
+          <div className="mt-1 flex min-w-0 items-center gap-2.5">
+            <h1 className="truncate text-xl font-semibold tracking-tight text-ink">
+              {project.name}
+            </h1>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border bg-surface-2 py-0.5 pl-2 pr-0.5 font-mono text-[11px] text-ink-3">
+              {project.id}
+              <CopyButton value={project.id} />
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-6 sm:mt-2">
           <div>
@@ -82,68 +101,136 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
-      <ProjectTabs projectId={id} />
-
-      <div className="mt-6">
-        <RevealKey projectId={project.id} />
-      </div>
-
-      {/* Quick look cards */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Link
-          href={`/projects/${id}/events`}
-          prefetch
-          className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
-        >
-          <div className="flex items-start gap-4">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-2 text-ink-3">
-              <Activity className="h-4 w-4" />
+      {/* API key (hashed) — write-only, never revealed */}
+      <div className="card mt-6 overflow-hidden p-0">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-surface-2 text-ink-3">
+              <KeyRound className="h-3.5 w-3.5" />
             </span>
-            <div>
-              <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
-                Events
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">
+                API Key (Hashed)
               </p>
-              <p className="mt-1 font-mono text-3xl font-semibold leading-none tabular-nums text-ink">
-                {stats ? stats.event_count.toLocaleString('en-IN') : '—'}
-                <span className="ml-1.5 text-sm font-normal text-ink-3">
-                  total
-                </span>
-              </p>
-              <p className="mt-1.5 text-xs text-ink-4">
-                View event log and delivery status
+              <p className="text-[11px] text-ink-4">
+                Write-only — shown once at creation
               </p>
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-ink-3 transition-colors group-hover:text-copper" />
-        </Link>
-
-        <Link
-          href={`/projects/${id}/notifications`}
-          prefetch
-          className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
-        >
-          <div className="flex items-start gap-4">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-surface-2 text-ink-3">
-              <Bell className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
-                Notifications
-              </p>
-              <p className="mt-1 font-mono text-3xl font-semibold leading-none tabular-nums text-copper">
-                {stats ? stats.unread_count.toLocaleString('en-IN') : '—'}
-                <span className="ml-1.5 text-sm font-normal text-ink-3">
-                  unread
-                </span>
-              </p>
-              <p className="mt-1.5 text-xs text-ink-4">
-                In-app notifications for end users
-              </p>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-ink-3 transition-colors group-hover:text-copper" />
-        </Link>
+          <span className="pill bg-success-tint font-medium text-status-delivered">
+            <Check className="h-3 w-3" />
+            Active
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+          <code className="font-mono text-[13px] text-ink-2">
+            {'pk_test_' + '\u2022'.repeat(20)}
+          </code>
+          <p className="text-[11px] text-ink-4">
+            Not recoverable after creation — roll the key if lost.
+          </p>
+        </div>
       </div>
+
+      {/* First-signal checklist until the project has received any event */}
+      {!hasSignal ? (
+        <div className="card mt-6 p-6">
+          <h2 className="text-base font-semibold text-ink">
+            Send your first signal
+          </h2>
+          <p className="mt-1 text-sm text-ink-3">
+            Two more steps to receive your first event.
+          </p>
+          <ul className="mt-5">
+            <li className="flex items-center gap-3 border-b border-border py-3.5">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-success-tint text-status-delivered">
+                <Check className="h-3.5 w-3.5" />
+              </span>
+              <p className="text-sm text-ink">Project created &amp; API key generated</p>
+            </li>
+            <li className="flex flex-wrap items-center gap-3 border-b border-border py-3.5">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong font-mono text-xs text-ink-2">
+                2
+              </span>
+              <p className="text-sm text-ink-2">Send your first event</p>
+              <span className="ml-auto">
+                <CopyButton value={curlSnippet} label="Copy cURL" />
+              </span>
+            </li>
+            <li className="flex flex-wrap items-center gap-3 py-3.5">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong font-mono text-xs text-ink-2">
+                3
+              </span>
+              <p className="text-sm text-ink-2">Observe it in the live feed</p>
+              <Link
+                href={`/projects/${id}/events`}
+                prefetch
+                className="ml-auto inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-copper transition-colors hover:text-ink"
+              >
+                Open live feed
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </li>
+          </ul>
+        </div>
+      ) : (
+        /* Quick look cards */
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Link
+            href={`/projects/${id}/events`}
+            prefetch
+            className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
+          >
+            <div className="flex items-start gap-4">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-ink-3">
+                <Activity className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
+                  Events
+                </p>
+                <p className="mt-1 font-mono text-3xl font-semibold leading-none tabular-nums text-ink">
+                  {stats ? stats.event_count.toLocaleString('en-IN') : '—'}
+                  <span className="ml-1.5 text-sm font-normal text-ink-3">
+                    total
+                  </span>
+                </p>
+                <p className="mt-1.5 text-xs text-ink-4">
+                  View event log and delivery status
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-ink-3 transition-colors group-hover:text-copper" />
+          </Link>
+
+          <Link
+            href={`/projects/${id}/notifications`}
+            prefetch
+            className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
+          >
+            <div className="flex items-start gap-4">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-ink-3">
+                <Bell className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
+                  Notifications
+                </p>
+                <p className="mt-1 font-mono text-3xl font-semibold leading-none tabular-nums text-copper">
+                  {stats ? stats.unread_count.toLocaleString('en-IN') : '—'}
+                  <span className="ml-1.5 text-sm font-normal text-ink-3">
+                    unread
+                  </span>
+                </p>
+                <p className="mt-1.5 text-xs text-ink-4">
+                  In-app notifications for end users
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-ink-3 transition-colors group-hover:text-copper" />
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

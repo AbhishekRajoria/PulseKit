@@ -3,7 +3,6 @@ import { fetchApi } from '@/lib/api'
 import type { ApiResponse, Event, Project } from '@/types'
 import type { Metadata } from 'next'
 import { EventsDashboard } from '@/app/components/EventsDashboard'
-import { ProjectTabs } from '@/app/components/ProjectTabs'
 
 export async function generateMetadata({
   params,
@@ -43,8 +42,6 @@ export default async function ProjectEventsPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <ProjectTabs projectId={projectId} />
-
       <EventsDashboard
         projectId={projectId}
         initialEvents={events}
