@@ -40,7 +40,7 @@ export default async function ProjectsPage() {
     <div className="mx-auto max-w-4xl">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
-          <h1 className="text-xl font-semibold tracking-tight text-ink">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Projects
           </h1>
           {projects.length > 0 && (

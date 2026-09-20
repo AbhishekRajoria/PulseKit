@@ -88,7 +88,7 @@ export function EventsDashboard({
         <div className="mt-10">
           <div className="card overflow-hidden">
             <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
-              <div className="grid h-16 w-16 place-items-center rounded-2xl bg-surface-2 text-ink-4">
+              <div className="grid h-16 w-16 place-items-center rounded-lg bg-surface-2 text-ink-4">
                 <FileTerminal className="h-8 w-8" />
               </div>
               <div>

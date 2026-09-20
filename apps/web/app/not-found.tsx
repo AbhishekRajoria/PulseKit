@@ -46,13 +46,13 @@ export default function NotFound() {
         <Brand />
       </div>
 
-      <p className="font-mono text-[11px] uppercase tracking-widest text-failure">
+      <p className="font-mono text-[11px] uppercase tracking-widest text-copper">
         Status 404 · Signal lost
       </p>
       <div className="mt-6 w-full max-w-xs">
         <TraceGraphic />
       </div>
-      <h1 className="mt-6 text-2xl font-semibold tracking-tight text-ink">
+      <h1 className="mt-6 text-3xl font-semibold tracking-tight text-ink">
         Route unacknowledged.
       </h1>
       <p className="mt-2 max-w-sm text-center text-sm leading-6 text-ink-3">

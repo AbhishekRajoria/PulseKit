@@ -210,7 +210,11 @@ export default async function ProjectDetailPage({
                 <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
                   Notifications
                 </p>
-                <p className="mt-1 font-mono text-3xl font-semibold leading-none tabular-nums text-copper">
+                <p
+                  className={`mt-1 font-mono text-3xl font-semibold leading-none tabular-nums ${
+                    (stats?.unread_count ?? 0) > 0 ? 'text-copper' : 'text-ink-4'
+                  }`}
+                >
                   {stats ? stats.unread_count.toLocaleString('en-IN') : '—'}
                   <span className="ml-1.5 text-sm font-normal text-ink-3">
                     unread
