@@ -13,6 +13,7 @@ import {
   KeyRound,
 } from 'lucide-react'
 import { CopyButton, Micro } from '@/app/components/Primitives'
+import { RevealKey } from './reveal-key'
 
 export async function generateMetadata({
   params,
@@ -101,7 +102,7 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
-      {/* API key (hashed) — write-only, never revealed */}
+      {/* API key — hidden by default, password-gated reveal */}
       <div className="card mt-6 overflow-hidden p-0">
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -110,10 +111,10 @@ export default async function ProjectDetailPage({
             </span>
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink">
-                API Key (Hashed)
+                API Key
               </p>
               <p className="text-[11px] text-ink-4">
-                Write-only — shown once at creation
+                Hidden by default — shown once at creation, reveal with password
               </p>
             </div>
           </div>
@@ -122,14 +123,7 @@ export default async function ProjectDetailPage({
             Active
           </span>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-          <code className="font-mono text-[13px] text-ink-2">
-            {'pk_test_' + '\u2022'.repeat(20)}
-          </code>
-          <p className="text-[11px] text-ink-4">
-            Not recoverable after creation — roll the key if lost.
-          </p>
-        </div>
+        <RevealKey projectId={project.id} />
       </div>
 
       {/* First-signal checklist until the project has received any event */}

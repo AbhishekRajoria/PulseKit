@@ -145,3 +145,35 @@ export async function deleteProject(
 
   return {};
 }
+
+export async function revealApiKey(
+  projectId: string,
+  _prevState: { error?: string; apiKey?: string },
+  formData: FormData,
+): Promise<{ error?: string; apiKey?: string }> {
+  const password = formData.get("password") as string;
+
+  if (!password) {
+    return { error: "Password is required to reveal the API key" };
+  }
+
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("userId")?.value;
+
+  const res = await fetch(`${process.env.API_URL}/api/v1/projects/${projectId}/reveal-key`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(cookie ? { Cookie: `userId=${cookie}` } : {}),
+    },
+    body: JSON.stringify({ password }),
+  });
+
+  const data = await res.json();
+
+  if (!data.success) {
+    return { error: data.error ?? "Failed to reveal API key" };
+  }
+
+  return { apiKey: data.data.api_key as string };
+}
