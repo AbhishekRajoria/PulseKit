@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { LinkPending } from '@/app/components/Primitives'
 
 const tabs = [
   { href: `/projects`, label: 'Overview', snippet: '' },
@@ -29,6 +30,7 @@ export function ProjectTabs({ projectId }: { projectId: string }) {
             <Link
               key={t.label}
               href={base + t.snippet}
+              prefetch
               aria-current={isActive ? 'page' : undefined}
               className={`relative -mb-px inline-flex cursor-pointer items-center border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                 isActive
@@ -37,6 +39,7 @@ export function ProjectTabs({ projectId }: { projectId: string }) {
               }`}
             >
               {t.label}
+              <LinkPending />
             </Link>
           )
         })}

@@ -92,6 +92,7 @@ export default async function ProjectDetailPage({
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link
           href={`/projects/${id}/events`}
+          prefetch
           className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
         >
           <div className="flex items-start gap-4">
@@ -118,6 +119,7 @@ export default async function ProjectDetailPage({
 
         <Link
           href={`/projects/${id}/notifications`}
+          prefetch
           className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
         >
           <div className="flex items-start gap-4">

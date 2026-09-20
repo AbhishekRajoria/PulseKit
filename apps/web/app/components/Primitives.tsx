@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useLinkStatus } from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { Check, Copy, Eye, EyeOff, TriangleAlert } from 'lucide-react'
 
@@ -79,6 +80,23 @@ export function CopyButton({
       )}
       {copied ? 'Copied' : label}
     </button>
+  )
+}
+
+// -----------------------------------------------------------------------
+// LinkPending — subtle shimmer overlay while a Link's navigation is pending.
+// Must be rendered inside a <Link> whose position is `relative`.
+// -----------------------------------------------------------------------
+
+export function LinkPending() {
+  const { pending } = useLinkStatus()
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute inset-0 rounded-md transition-opacity ${
+        pending ? 'animate-pulse bg-ink/[0.05]' : 'opacity-0'
+      }`}
+    />
   )
 }
 

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
+import { LinkPending } from '@/app/components/Primitives'
 
 function HeaderLink({
   href,
@@ -18,13 +19,15 @@ function HeaderLink({
   return (
     <Link
       href={href}
-      className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+      prefetch
+      className={`relative rounded-md px-3 py-1.5 text-sm transition-colors ${
         active
           ? 'font-medium text-ink'
           : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
       }`}
     >
       {children}
+      <LinkPending />
     </Link>
   )
 }

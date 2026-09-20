@@ -89,6 +89,7 @@ export default function CreateProjectForm() {
         <div className="mt-4">
           <Link
             href={`/projects/${state.projectId}`}
+            prefetch
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary-action px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
           >
             View project

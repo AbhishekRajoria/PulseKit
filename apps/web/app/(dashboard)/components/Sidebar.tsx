@@ -12,7 +12,7 @@ import {
   FolderKanban,
   Gauge,
 } from 'lucide-react'
-import { Brand, Micro } from '@/app/components/Primitives'
+import { Brand, LinkPending, Micro } from '@/app/components/Primitives'
 import { LogoutButton } from './LogoutButton'
 
 type NavItem = {
@@ -241,6 +241,7 @@ export function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
                 className={`relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-surface-2 hover:text-ink ${
                   active
                     ? 'bg-surface-2 font-medium text-ink'
@@ -250,6 +251,7 @@ export function Sidebar({
               >
                 {item.icon}
                 {expanded && item.label}
+                <LinkPending />
               </Link>
             )
           })}
@@ -265,6 +267,7 @@ export function Sidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch
                     className={`relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-surface-2 hover:text-ink ${
                       active ? 'bg-surface-2 font-medium text-ink' : 'text-ink-2'
                     } ${expanded ? '' : 'justify-center px-0'}`}
@@ -272,6 +275,7 @@ export function Sidebar({
                   >
                     {item.icon}
                     {expanded && item.label}
+                    <LinkPending />
                   </Link>
                 )
               })}
