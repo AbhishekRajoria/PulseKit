@@ -1,36 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
-import { LinkPending } from '@/app/components/Primitives'
-
-function HeaderLink({
-  href,
-  children,
-}: {
-  href: string
-  children: ReactNode
-}) {
-  const pathname = usePathname()
-  const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
-  return (
-    <Link
-      href={href}
-      prefetch
-      className={`relative rounded-md px-3 py-1.5 text-sm transition-colors ${
-        active
-          ? 'font-medium text-ink'
-          : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
-      }`}
-    >
-      {children}
-      <LinkPending />
-    </Link>
-  )
-}
 
 export default function DashboardLayout({
   children,
@@ -52,25 +25,33 @@ export default function DashboardLayout({
       <div
         className={`flex min-h-screen flex-1 flex-col transition-[padding] duration-200 ${collapsed ? 'lg:pl-[68px]' : 'lg:pl-60'}`}
       >
-        {/* Sticky top header */}
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-canvas/90 px-5 backdrop-blur-xl lg:px-8">
-          <div className="flex items-center gap-2 lg:hidden">
+        {/* Sticky top header — minimal dashboard bar (no public nav) */}
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-canvas/90 px-5 backdrop-blur-xl lg:px-8">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen((p) => !p)}
-              className="cursor-pointer rounded-md p-1.5 text-ink-2 transition-colors hover:bg-surface-2"
+              className="cursor-pointer rounded-md p-1.5 text-ink-2 transition-colors hover:bg-surface-2 lg:hidden"
               aria-label="Toggle sidebar"
               aria-expanded={mobileOpen}
             >
               <Menu className="h-5 w-5" />
             </button>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs">
+              <span className="hidden font-normal text-ink-3 sm:inline">
+                Workspace
+              </span>
+              <span className="hidden select-none text-ink-4 sm:inline">/</span>
+              <span className="font-medium text-ink">Projects</span>
+            </nav>
           </div>
-          <nav className="hidden items-center gap-1 lg:flex">
-            <HeaderLink href="/">Home</HeaderLink>
-            <HeaderLink href="/docs">Docs</HeaderLink>
-            <HeaderLink href="/guide">Guide</HeaderLink>
-            <HeaderLink href="/projects">Projects</HeaderLink>
-          </nav>
+          <Link
+            href="/docs"
+            prefetch
+            className="cursor-pointer text-xs text-ink-3 transition-colors hover:text-ink"
+          >
+            Docs
+          </Link>
         </header>
 
         {/* Content area */}

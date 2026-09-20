@@ -6,10 +6,11 @@ import { Check, ChevronRight, Copy, Eye, EyeOff, Plus, X } from 'lucide-react'
 import { createProject } from '@/app/actions/projects'
 import { AlertError } from '@/app/components/Primitives'
 
-export default function CreateProjectForm() {
+export default function CreateProjectForm({ eventUrl }: { eventUrl: string }) {
   const [state, formAction, pending] = useActionState(createProject, {})
   const [showKey, setShowKey] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedSnippet, setCopiedSnippet] = useState(false)
   const [open, setOpen] = useState(false)
   const [successDismissed, setSuccessDismissed] = useState(false)
   const [rateLimit, setRateLimit] = useState(30)
@@ -20,6 +21,18 @@ export default function CreateProjectForm() {
     navigator.clipboard?.writeText(state.apiKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const copySnippet = () => {
+    if (!state.apiKey) return
+    navigator.clipboard?.writeText(
+      `curl -X POST ${eventUrl} \\
+  -H "Authorization: Bearer ${state.apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"event":"page.view","data":{}}'`,
+    )
+    setCopiedSnippet(true)
+    setTimeout(() => setCopiedSnippet(false), 1500)
   }
 
   useEffect(() => {
@@ -63,7 +76,7 @@ export default function CreateProjectForm() {
           setOpen(true)
           setSuccessDismissed(false)
         }}
-        className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-ink-3 hover:bg-surface-2 hover:text-ink"
+        className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-primary-action px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-action-hover"
       >
         <Plus className="h-4 w-4" />
         New project
@@ -248,22 +261,52 @@ export default function CreateProjectForm() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSuccessDismissed(true)}
-                className="cursor-pointer rounded-lg px-3 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
-              >
-                Close
-              </button>
+            <div className="mt-4 rounded-lg border border-border bg-surface p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-ink-3">
+                  Quickstart
+                </span>
+                <button
+                  type="button"
+                  onClick={copySnippet}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                    copiedSnippet
+                      ? 'bg-success-tint text-status-delivered'
+                      : 'text-ink-4 hover:bg-surface-2 hover:text-ink-2'
+                  }`}
+                >
+                  <Copy className="h-3 w-3" />
+                  {copiedSnippet ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <pre className="mt-2 overflow-x-auto rounded-lg border border-border bg-card p-3 font-mono text-[11px] leading-relaxed text-ink-2">
+{`curl -X POST ${eventUrl} \\
+  -H "Authorization: Bearer ${state.apiKey.slice(0, 7)}…" \\
+  -H "Content-Type: application/json" \\
+  -d '{"event":"page.view","data":{}}'`}
+              </pre>
+              <p className="mt-2 text-[11px] leading-relaxed text-ink-4">
+                Your first incoming event will surface in the project&apos;s
+                live feed below.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-2">
               <Link
                 href={`/projects/${state.projectId}`}
                 prefetch
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary-action px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary-action px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
               >
-                View project
+                Close and Go to Project
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
+              <button
+                type="button"
+                onClick={() => setSuccessDismissed(true)}
+                className="cursor-pointer rounded-md px-3 py-2 text-sm text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
