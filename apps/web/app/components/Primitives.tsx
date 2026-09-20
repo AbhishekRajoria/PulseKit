@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useLinkStatus } from 'next/link'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Check, Copy, Eye, EyeOff, TriangleAlert } from 'lucide-react'
 
 // -----------------------------------------------------------------------
@@ -31,18 +31,32 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   )
 }
 
-// Full-screen entry splash — the logo dot at scale, shown while the dashboard
-// group first loads (see app/(dashboard)/loading.tsx).
+// Full-screen entry splash — 0.9s pinging signal, then a 0.3s fade-out.
+// Shown while the dashboard group first loads (app/(dashboard)/loading.tsx).
 export function SplashScreen() {
+  const [fading, setFading] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setFading(true), 900)
+    return () => clearTimeout(t)
+  }, [])
   return (
-    <div className="fixed inset-0 z-50 grid min-h-screen place-items-center bg-canvas">
-      <div className="flex flex-col items-center gap-5">
-        <span className="relative grid h-20 w-20 place-items-center" aria-hidden="true">
-          <span className="absolute h-16 w-16 animate-ping rounded-full border border-copper/40" />
-          <span className="absolute h-14 w-14 rounded-full border border-copper/30" />
-          <span className="h-6 w-6 rounded-full bg-copper" />
+    <div
+      className={`fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-canvas transition-opacity duration-300 ${
+        fading ? 'pointer-events-none opacity-0' : 'opacity-100'
+      }`}
+    >
+      <div className="flex flex-col items-center">
+        {/* Signal graphic — outer ring pings, core dot steady */}
+        <span className="relative grid h-24 w-24 place-items-center" aria-hidden="true">
+          <span className="absolute h-16 w-16 animate-ping rounded-full border border-copper/20 [animation-duration:1000ms]" />
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-copper/10">
+            <span className="h-3.5 w-3.5 rounded-full bg-copper" />
+          </span>
         </span>
-        <span className="text-base font-semibold tracking-tight text-ink">PulseKit</span>
+        {/* Monospace caption — technical, instrument-grade */}
+        <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+          Initializing pipeline
+        </p>
       </div>
     </div>
   )
@@ -122,7 +136,7 @@ export function LinkPending() {
 // -----------------------------------------------------------------------
 
 const statusColor: Record<string, string> = {
-  delivered: 'text-copper',
+  delivered: 'text-status-delivered',
   failed: 'text-failure',
   pending: 'text-pending',
   deduplicated: 'text-ink-3',

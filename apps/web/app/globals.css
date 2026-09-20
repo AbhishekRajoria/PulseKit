@@ -30,6 +30,8 @@
   --failure: #dc2626;
   --failure-tint: #fef2f2;
   --pending: #d97706;
+  --success: #16a34a;
+  --success-tint: #ecfdf5;
 
   /* Amber security pill */
   --amber-soft: #fdf1e3;
@@ -49,8 +51,8 @@
   --pulse-bg: #fdf3ee;
   --pulse-dim: #fde0d1;
 
-  /* Radius base — cards 2xl (20px), hairline-scaled down */
-  --radius: 0.75rem;
+  /* Radius base — cards 8px (rounded-lg), inputs/buttons 6px (rounded-md) */
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -96,6 +98,8 @@
   --color-failure: var(--failure);
   --color-failure-tint: var(--failure-tint);
   --color-pending: var(--pending);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
   --color-amber-soft: var(--amber-soft);
   --color-amber-ink: var(--amber-ink);
 
@@ -108,8 +112,8 @@
   /* Overlay */
   --color-overlay: var(--overlay);
 
-  /* Status tokens — delivered is copper, never green */
-  --color-status-delivered: var(--copper);
+  /* Status tokens — delivered is emerald (success), never copper */
+  --color-status-delivered: var(--success);
   --color-status-failed: var(--failure);
   --color-status-pending: var(--pending);
   --color-status-rate: #f97316;
@@ -125,8 +129,8 @@
   --color-sidebar-active-bg: var(--surface-2);
   --color-sidebar-active-text: var(--ink);
 
-  /* Shadows — matte instrument grade */
-  --shadow-card: 0 1px 2px 0 rgb(28 25 23 / 0.05);
+  /* Shadows — matte instrument grade, crisp 1px elevation */
+  --shadow-card: 0 1px 3px 0 rgb(28 25 23 / 0.04);
   --shadow-panel: 0 18px 50px 0 rgb(28 25 23 / 0.12);
 }
 
@@ -154,9 +158,9 @@
 }
 
 @layer components {
-  /* Card — white, hairline border, 20px radius, one shadow token */
+  /* Card — white, hairline border, 8px radius, crisp 1px elevation */
   .card {
-    @apply rounded-2xl border border-border bg-card shadow-card;
+    @apply rounded-lg border border-border bg-card shadow-card;
   }
 
   /* Pill — status/channel badge base, compose with colour variants */
