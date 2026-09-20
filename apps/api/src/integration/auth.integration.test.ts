@@ -19,6 +19,22 @@ describe("auth", () => {
       expect(res.body.data.email).toBe("pulsekit@test.com");
       expect(res.body.data).not.toHaveProperty("password_hash");
     });
+    it("sets the signed userId cookie so register auto-sessions the user", async () => {
+      const agent = request.agent(app);
+
+      const reg = await agent.post("/auth/register").send({
+        email: "cookie@test.com",
+        password: "test@123",
+        name: "Cookie",
+      });
+
+      expect(reg.status).toBe(201);
+      expect(String(reg.headers["set-cookie"])).toContain("userId=");
+
+      const me = await agent.get("/auth/me");
+      expect(me.status).toBe(200);
+      expect(me.body.data.id).toBe(reg.body.data.id);
+    });
     it("400s on missing email", async () => {
       const res = await request(app)
         .post("/auth/register")

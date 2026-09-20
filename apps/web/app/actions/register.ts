@@ -28,24 +28,9 @@ export default async function register(
       }
     }
 
-    // register sets no cookie — auto-login right after, then re-emit the
-    // signed userId cookie on our domain (same pattern as actions/login.ts).
-    const loginRes = await fetch(`${process.env.API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    const loginData = await loginRes.json()
-
-    if (!loginData.success) {
-      return {
-        success: false,
-        data: {},
-        error: loginData.error ?? 'Account created — please sign in',
-      }
-    }
-
-    const header = loginRes.headers
+    // register now sets the signed userId cookie on the API side — re-emit
+    // the same cookie value on our domain (same pattern as actions/login.ts).
+    const header = regRes.headers
       .getSetCookie()
       .find((c) => c.startsWith('userId='))
 

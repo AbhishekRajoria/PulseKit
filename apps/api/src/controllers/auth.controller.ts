@@ -34,6 +34,13 @@ export const register = async (
       [email, hashed, name],
     );
 
+    res.cookie("userId", result.rows[0].id, {
+      signed: true,
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return res.status(201).json({
       success: true,
       data: result.rows[0],
