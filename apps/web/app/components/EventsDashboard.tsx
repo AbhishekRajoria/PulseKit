@@ -136,7 +136,7 @@ export function EventsDashboard({
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                 Delivered
               </p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-copper">
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-status-delivered">
                 {delivered.toLocaleString()}
               </p>
             </div>
@@ -152,19 +152,15 @@ export function EventsDashboard({
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                 Pending
               </p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-ink-3">
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-pending">
                 {pending.toLocaleString()}
               </p>
             </div>
           </div>
 
-          {/* Live feed */}
+          {/* Live feed banner attached above the events table */}
           <div className="mt-6">
             <LiveFeed projectId={projectId} />
-          </div>
-
-          {/* Events table with search */}
-          <div className="mt-6">
             <EventsList events={events} projectId={projectId} />
           </div>
         </>

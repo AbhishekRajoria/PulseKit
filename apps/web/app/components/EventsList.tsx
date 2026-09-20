@@ -48,9 +48,9 @@ export function EventsList({
   })
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+    <div className="rounded-b-lg border border-t-0 border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-4 py-2.5">
+        <h2 className="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-3">
           All events
         </h2>
         <div className="relative">
@@ -60,7 +60,7 @@ export function EventsList({
             placeholder="Search events…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-9 w-52 rounded-md border border-border-strong bg-surface pl-8 pr-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:ring-2 focus:ring-ink/10"
+            className="h-8 w-52 rounded-md border border-border-strong bg-card pl-8 pr-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
         </div>
       </div>
@@ -68,33 +68,33 @@ export function EventsList({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-border">
-              <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+            <tr className="border-b border-border bg-surface-2">
+              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-ink-3">
                 Event
               </th>
-              <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 sm:table-cell">
+              <th scope="col" className="hidden px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-ink-3 sm:table-cell">
                 User
               </th>
-              <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-ink-3">
                 Status
               </th>
-              <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 md:table-cell">
+              <th scope="col" className="hidden px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-ink-3 md:table-cell">
                 Channel
               </th>
-              <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 lg:table-cell">
+              <th scope="col" className="hidden px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-ink-3 lg:table-cell">
                 Received
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody>
             {filtered.map((e) => {
               const lastLog = e.logs[e.logs.length - 1]
               const status = lastLog?.status ?? 'pending'
               const channel = lastLog?.channel ?? '—'
 
               return (
-                <tr key={e.id} className="transition-colors hover:bg-surface-2">
-                  <td className="px-5 py-3.5">
+                <tr key={e.id} className="h-11 transition-colors hover:bg-canvas">
+                  <td className="px-4 align-middle">
                     <Link
                       href={`/projects/${projectId}/events/${e.id}`}
                       className="cursor-pointer font-mono text-[13px] font-medium text-ink hover:text-copper hover:underline"
@@ -102,19 +102,19 @@ export function EventsList({
                       {e.event_name}
                     </Link>
                   </td>
-                  <td className="hidden px-5 py-3.5 font-mono text-[13px] text-ink-3 sm:table-cell">
+                  <td className="hidden px-4 align-middle font-mono text-[13px] text-ink-3 sm:table-cell">
                     {e.user_id}
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 align-middle">
                     <Status status={status} />
                   </td>
-                  <td className="hidden px-5 py-3.5 md:table-cell">
+                  <td className="hidden px-4 align-middle md:table-cell">
                     <span className="pill bg-surface-2 capitalize text-ink-3">
                       {channel}
                       {e.logs.length > 1 && <span className="text-ink-4">×{e.logs.length}</span>}
                     </span>
                   </td>
-                  <td className="hidden whitespace-nowrap px-5 py-3.5 text-xs tabular-nums text-ink-3 lg:table-cell">
+                  <td className="hidden whitespace-nowrap px-4 align-middle text-xs tabular-nums text-ink-3 lg:table-cell">
                     {e.received_at ? timeAgo(e.received_at) : '—'}
                   </td>
                 </tr>
@@ -124,7 +124,7 @@ export function EventsList({
               <tr>
                 <td
                   colSpan={5}
-                  className="px-5 py-10 text-center text-sm text-ink-3"
+                  className="px-4 py-10 text-center text-sm text-ink-3"
                 >
                   No events match your search.
                 </td>
