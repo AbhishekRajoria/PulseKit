@@ -31,6 +31,23 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   )
 }
 
+// Full-screen entry splash — the logo dot at scale, shown while the dashboard
+// group first loads (see app/(dashboard)/loading.tsx).
+export function SplashScreen() {
+  return (
+    <div className="fixed inset-0 z-50 grid min-h-screen place-items-center bg-canvas">
+      <div className="flex flex-col items-center gap-5">
+        <span className="relative grid h-20 w-20 place-items-center" aria-hidden="true">
+          <span className="absolute h-16 w-16 animate-ping rounded-full border border-copper/40" />
+          <span className="absolute h-14 w-14 rounded-full border border-copper/30" />
+          <span className="h-6 w-6 rounded-full bg-copper" />
+        </span>
+        <span className="text-base font-semibold tracking-tight text-ink">PulseKit</span>
+      </div>
+    </div>
+  )
+}
+
 // -----------------------------------------------------------------------
 // Typography helpers
 // -----------------------------------------------------------------------
