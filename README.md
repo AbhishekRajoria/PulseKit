@@ -336,13 +336,13 @@ Apply the six migrations and seed on Neon before the first deploy. The seed crea
 
 ### API — integration suite
 
-26 tests across 4 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
+34 tests across 4 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
 
 | Suite | Tests | Covers |
 |---|---|---|
-| `auth.integration.test.ts` | 6 | Register, login, cookie session, logout, protected routes, orphan session |
-| `project.integration.test.ts` | 13 | CRUD, ownership scoping, duplicate-name handling, auth isolation, channel config (merge/save/disable, email + Slack validation) |
-| `event.integration.test.ts` | 5 | Ingest + queue assertion, validation errors, auth isolation |
+| `auth.integration.test.ts` | 7 | Register (incl. Set-Cookie session), login, cookie session, logout, protected routes, orphan session |
+| `project.integration.test.ts` | 19 | CRUD, PATCH update + rate-limit validation, DELETE + event cascade, ownership scoping, duplicate-name handling, auth isolation, channel config (merge/save/disable, email + Slack validation) |
+| `event.integration.test.ts` | 6 | Ingest + queue assertion, `event_received` pub/sub broadcast, validation errors, auth isolation |
 | `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, window reset |
 
 The event suite asserts on queue state (`getJobCounts()`) rather than `delivery_logs` rows — queue counts are deterministic whether or not a live worker is consuming the queue.
@@ -394,13 +394,14 @@ apps/
           [id]/events/        Event list + live feed
           [id]/notifications/ Per-project inbox (user pills, mark-read)
           [id]/channels/      Channel config (email / Slack / in-app toggles)
+          [id]/settings/      Project settings (name, rate limit, delete)
       api/events/             Proxy routes → Express
       api/notifications/      Proxy routes → Express
       api/projects/           Proxy routes → Express (stats, channels)
       components/
         LiveFeed.tsx           WebSocket client — delivery updates
         EventsDashboard.tsx    Stat cards + live feed + event table
-        ProjectTabs.tsx        Overview / Events / Notifications / Channels
+        ProjectTabs.tsx        Overview / Events / Notifications / Channels / Settings
         EventsList.tsx
         PayloadBlock.tsx
     lib/format.ts             timeAgo, formatting utilities
