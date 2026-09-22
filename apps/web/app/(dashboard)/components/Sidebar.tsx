@@ -349,11 +349,11 @@ export function Sidebar({
         <button
           type="button"
           onClick={onToggleCollapsed}
-          className="absolute bottom-8 right-0 z-10 hidden h-6 w-6 translate-x-1/2 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-ink-2 shadow-panel transition-colors hover:text-ink lg:inline-flex"
+          className="absolute bottom-12 right-0 z-10 hidden h-7 w-7 translate-x-1/2 cursor-pointer items-center justify-center rounded-lg border border-border-strong bg-card text-ink-2 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-colors hover:text-ink lg:inline-flex"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <ChevronLeft
-            className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
           />
         </button>
       </div>
