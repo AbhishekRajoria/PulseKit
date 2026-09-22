@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Brand, LinkPending, LiveDot, Mono, Status } from './Primitives'
-import logout from '@/app/actions/logout'
+import { LogoutButton } from '@/app/(dashboard)/components/LogoutButton'
 
 // -----------------------------------------------------------------------
 // Shared marketing header (landing, docs, guide)
@@ -152,16 +152,7 @@ export function MarketingHeader() {
               <LinkPending />
             </Link>
           ))}
-          {authed && (
-            <form action={logout}>
-              <button
-                type="submit"
-                className="w-full rounded-md px-3 py-2 text-left text-sm text-ink-2 transition-colors hover:bg-surface-2"
-              >
-                Log out
-              </button>
-            </form>
-          )}
+          {authed && <LogoutButton />}
         </nav>
       )}
     </header>

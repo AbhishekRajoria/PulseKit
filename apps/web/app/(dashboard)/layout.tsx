@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { LogOut, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
+import { LogoutButton } from './components/LogoutButton'
 import { SplashScreen } from '@/app/components/Primitives'
-import logout from '@/app/actions/logout'
 
 function getInitials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -90,15 +90,7 @@ export default function DashboardLayout({
             <span className="grid h-8 w-8 place-items-center rounded-full bg-ink text-xs font-medium text-white">
               {initials}
             </span>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="cursor-pointer rounded-md p-1.5 text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
-                aria-label="Log out"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
+            <LogoutButton />
           </div>
         </header>
 
