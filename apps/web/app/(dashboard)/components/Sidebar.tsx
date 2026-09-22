@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -67,6 +67,11 @@ export function Sidebar({
 
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [flyoutPos, setFlyoutPos] = useState<{
+    top: number
+    left: number
+  } | null>(null)
+  const switcherBtnRef = useRef<HTMLButtonElement>(null)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [lastPathProjectId, setLastPathProjectId] = useState<string | null>(null)
 
@@ -160,6 +165,41 @@ export function Sidebar({
       ]
     : []
 
+  const switcherMenu = (
+    <>
+      <p className="px-3 pb-1 pt-0.5 text-[11px] font-medium text-ink-4">
+        Switch project
+      </p>
+      {projects?.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => {
+            setSelectedProjectId(p.id)
+            setSwitcherOpen(false)
+            router.push(`/projects/${p.id}`)
+          }}
+          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+            p.id === resolvedProjectId
+              ? 'bg-surface-2 font-medium text-ink'
+              : 'text-ink-2 hover:bg-surface-2'
+          }`}
+        >
+          <span className="truncate">{p.name}</span>
+          {p.id === resolvedProjectId && (
+            <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-copper" />
+          )}
+        </button>
+      ))}
+      {projects === null && (
+        <p className="px-3 py-1.5 text-xs text-ink-4">Loading…</p>
+      )}
+      {projects?.length === 0 && (
+        <p className="px-3 py-1.5 text-xs text-ink-4">No projects yet</p>
+      )}
+    </>
+  )
+
   return (
     <>
       {mobileOpen && (
@@ -188,7 +228,19 @@ export function Sidebar({
           <div className="shrink-0 p-3">
             <button
               type="button"
-              onClick={() => setSwitcherOpen((o) => !o)}
+              ref={switcherBtnRef}
+              onClick={() => {
+                if (!expanded) {
+                  const r = switcherBtnRef.current?.getBoundingClientRect()
+                  setFlyoutPos({
+                    top: (r?.bottom ?? 120) + 4,
+                    left: (r?.right ?? 68) + 8,
+                  })
+                } else {
+                  setFlyoutPos(null)
+                }
+                setSwitcherOpen((o) => !o)
+              }}
               className={`flex w-full items-center gap-2.5 rounded-lg border border-border px-2.5 py-2 text-left text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 ${
                 expanded ? '' : 'justify-center px-0'
               }`}
@@ -219,38 +271,21 @@ export function Sidebar({
                   />,
                   document.body,
                 )}
-                <div className="absolute left-3 right-3 z-50 mt-1 rounded-lg border border-border bg-card py-1 shadow-panel">
-                  <p className="px-3 pb-1 pt-0.5 text-[11px] font-medium text-ink-4">
-                    Switch project
-                  </p>
-                  {projects?.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedProjectId(p.id)
-                        setSwitcherOpen(false)
-                        router.push(`/projects/${p.id}`)
-                      }}
-                      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
-                        p.id === resolvedProjectId
-                          ? 'bg-surface-2 font-medium text-ink'
-                          : 'text-ink-2 hover:bg-surface-2'
-                      }`}
+                {expanded || !flyoutPos ? (
+                  <div className="absolute left-3 right-3 z-50 mt-1 rounded-lg border border-border bg-card py-1 shadow-panel">
+                    {switcherMenu}
+                  </div>
+                ) : (
+                  createPortal(
+                    <div
+                      className="fixed z-50 w-60 rounded-lg border border-border bg-card py-1 shadow-panel"
+                      style={{ top: flyoutPos.top, left: flyoutPos.left }}
                     >
-                      <span className="truncate">{p.name}</span>
-                      {p.id === resolvedProjectId && (
-                        <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-copper" />
-                      )}
-                    </button>
-                  ))}
-                  {projects === null && (
-                    <p className="px-3 py-1.5 text-xs text-ink-4">Loading…</p>
-                  )}
-                  {projects?.length === 0 && (
-                    <p className="px-3 py-1.5 text-xs text-ink-4">No projects yet</p>
-                  )}
-                </div>
+                      {switcherMenu}
+                    </div>,
+                    document.body,
+                  )
+                )}
               </>
             )}
           </div>
