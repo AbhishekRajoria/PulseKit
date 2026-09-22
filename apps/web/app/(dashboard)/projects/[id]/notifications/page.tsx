@@ -292,6 +292,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          if (u.user_id === userId) return
                           setLoading(true)
                           setUserId(u.user_id)
                           setExpandedId(null)
