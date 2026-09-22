@@ -61,14 +61,14 @@ export default async function ProjectDetailPage({
     "payload": { "amount": 2400, "currency": "USD" }
   }'`;
 
-  const sdkSnippet = `import PulseKit from 'pulsekit';
+  const sdkSnippet = `import { PulseKit } from 'pulsekit-sdk';
 
-const pulsekit = new PulseKit(process.env.PULSEKIT_API_KEY);
+const pulsekit = new PulseKit({ apiKey: process.env.PULSEKIT_API_KEY });
 
-await pulsekit.events.track({
-  event_name: 'invoice.paid',
-  user_id: 'usr_4f91',
-  payload: { amount: 2400, currency: 'USD' },
+await pulsekit.notify({
+  event: 'invoice.paid',
+  user: 'usr_4f91',
+  data: { amount: 2400, currency: 'USD' },
 });`;
 
   return (

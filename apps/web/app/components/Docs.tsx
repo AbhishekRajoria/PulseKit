@@ -113,7 +113,17 @@ export function PageFooter() {
     <footer className="mt-20 border-t border-border pt-10">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <Micro>PulseKit</Micro>
-        <p className="text-sm text-ink-3">Built for deliberate engineering.</p>
+        <div className="flex items-center gap-5 text-sm text-ink-3">
+          <p>Built for deliberate engineering.</p>
+          <a
+            href="https://www.npmjs.com/package/pulsekit-sdk"
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-xs transition-colors hover:text-ink"
+          >
+            pulsekit-sdk
+          </a>
+        </div>
       </div>
     </footer>
   )

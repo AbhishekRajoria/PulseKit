@@ -41,7 +41,7 @@ export function SplashScreen() {
   }, [])
   return (
     <div
-      className={`fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-canvas transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-canvas transition-opacity duration-300 ${
         fading ? 'pointer-events-none opacity-0' : 'opacity-100'
       }`}
     >

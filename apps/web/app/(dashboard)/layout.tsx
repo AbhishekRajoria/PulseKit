@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { LogOut, Menu } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
+import { SplashScreen } from '@/app/components/Primitives'
 import logout from '@/app/actions/logout'
 
 function getInitials(name?: string | null, email?: string | null): string {
@@ -24,6 +25,15 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [initials, setInitials] = useState('')
+  // Entry splash — loading.tsx only fires on slow navigations, so fast
+  // loads never show it. This guarantees the splash on dashboard mount
+  // (900ms display + the SplashScreen's own 300ms fade-out).
+  const [splash, setSplash] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setSplash(false), 1200)
+    return () => clearTimeout(t)
+  }, [])
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -38,6 +48,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-canvas">
+      {splash && <SplashScreen />}
       <Sidebar
         mobileOpen={mobileOpen}
         collapsed={collapsed}

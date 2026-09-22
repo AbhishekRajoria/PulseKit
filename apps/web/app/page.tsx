@@ -9,6 +9,7 @@ import {
   Layers2,
   Mail,
   MessagesSquare,
+  Package,
   SquareTerminal,
 } from 'lucide-react'
 import { Brand, CopyButton, LiveDot, Micro, Mono, Stat } from '@/app/components/Primitives'
@@ -135,6 +136,15 @@ export default async function Home() {
               </code>
               <CopyButton value="npm install pulsekit-sdk" />
             </div>
+            <a
+              href="https://www.npmjs.com/package/pulsekit-sdk"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-ink-3 transition-colors hover:text-ink"
+            >
+              <Package className="h-3.5 w-3.5" />
+              pulsekit-sdk v0.1.0 on npm
+            </a>
           </div>
 
           <LandingTerminal />

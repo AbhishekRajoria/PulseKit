@@ -119,7 +119,7 @@ export default async function GuidePage() {
             <DocSection id="repo" index="04" title="Repo layout">
               <Code filename="tree">{`apps/
   api/                        Express API + BullMQ worker
-    db/migrations/           001–006 — canonical schema
+    db/migrations/           001–007 — canonical schema
     src/controllers/         auth, event, notification, project
     src/middleware/          apiKeyAuth, rateLimiter, authenticate
     src/lib/                 queue, redis, emailTemplate, websocket
@@ -154,7 +154,7 @@ packages/
                 ]}
               />
               <DocP>
-                Apply the six migrations and seed on Neon before first deploy.
+                Apply the seven migrations and seed on Neon before first deploy.
               </DocP>
             </DocSection>
 
@@ -162,9 +162,10 @@ packages/
               <DocTable
                 head={['Suite', 'Count', 'Covers']}
                 rows={[
-                  ['auth.integration', '6', 'Register, login, cookie session, logout, protected routes'],
-                  ['project.integration', '5', 'CRUD, ownership scoping, duplicate names, auth isolation'],
-                  ['event.integration', '5', 'Ingest + queue assertion, validation, auth isolation'],
+                  ['auth.integration', '7', 'Register, login, cookie session, logout, protected routes'],
+                  ['project.integration', '19', 'CRUD, ownership scoping, channel merge, rate-limit validation, auth isolation'],
+                  ['event.integration', '6', 'Ingest + queue assertion, validation, auth isolation'],
+                  ['notification.integration', '3', 'Inbox, read state, auth isolation'],
                   ['ratelimit.integration', '2', '30 pass → 429 on the 31st, window reset'],
                   ['sdk contract', '16', 'Mocked-fetch notify() covering the full SDK contract'],
                 ]}

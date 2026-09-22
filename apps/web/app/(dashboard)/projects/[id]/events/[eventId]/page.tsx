@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic'
 import { fetchApi } from '@/lib/api'
-import type { ApiResponse, Event } from '@/types'
+import type { ApiResponse, Event, Project } from '@/types'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { PayloadBlock } from '@/app/components/PayloadBlock'
 import { Code, Micro, Status } from '@/app/components/Primitives'
 
@@ -54,13 +54,22 @@ export default async function ProjectEventDetailPage({
 }) {
   const { id: projectId, eventId } = await params
 
-  const res = await fetchApi(`/api/v1/events/${eventId}?project_id=${projectId}`)
+  const [eventRes, projectRes] = await Promise.all([
+    fetchApi(`/api/v1/events/${eventId}?project_id=${projectId}`),
+    fetchApi(`/api/v1/projects/${projectId}`),
+  ])
 
-  if (!res.ok) notFound()
+  if (!eventRes.ok) notFound()
 
-  const response: ApiResponse<Event> = await res.json()
+  const response: ApiResponse<Event> = await eventRes.json()
   const event = response.data
   if (!event) notFound()
+
+  let projectName = 'Project'
+  if (projectRes.ok) {
+    const projectData = (await projectRes.json()) as ApiResponse<Project>
+    if (projectData.data?.name) projectName = projectData.data.name
+  }
 
   const lastLog = event.logs[event.logs.length - 1]
   const status = lastLog?.status ?? 'pending'
@@ -92,18 +101,35 @@ export default async function ProjectEventDetailPage({
   ]
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <Link
-        href={`/projects/${projectId}/events`}
-        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink"
-      >
-        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-        Back to events
-      </Link>
+    <div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-ink-3">
+        <Link href="/projects" className="transition-colors hover:text-ink">
+          All projects
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <Link
+          href={`/projects/${projectId}`}
+          className="transition-colors hover:text-ink"
+        >
+          {projectName}
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <Link
+          href={`/projects/${projectId}/events`}
+          className="transition-colors hover:text-ink"
+        >
+          Events
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <span className="max-w-48 truncate font-mono font-medium text-ink">
+          {event.event_name}
+        </span>
+      </nav>
 
-      <div className="card mt-6">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
         {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-3">
           <div>
             <Micro>Event</Micro>
             <h1 className="mt-1 font-mono text-xl font-semibold tracking-tight text-ink">
@@ -120,8 +146,8 @@ export default async function ProjectEventDetailPage({
         </div>
 
         {/* Meta + Payload */}
-        <div className="space-y-6 px-6 py-5">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="space-y-4 px-6 py-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
               <Micro>User</Micro>
               <p className="mt-1.5 font-mono text-sm text-ink">{event.user_id}</p>
@@ -139,7 +165,7 @@ export default async function ProjectEventDetailPage({
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <div>
               <Micro>Event payload</Micro>
               <div className="mt-2">
@@ -163,8 +189,8 @@ export default async function ProjectEventDetailPage({
       </div>
 
       {/* Delivery log + status timeline */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="card overflow-hidden">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
           <div className="flex items-center gap-2 border-b border-border px-5 py-3">
             <p className="text-sm font-semibold text-ink">Delivery log</p>
             <span className="pill bg-surface-2 font-mono text-ink-3">
@@ -193,11 +219,11 @@ export default async function ProjectEventDetailPage({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/50">
                   {event.logs.map((log) => (
                     <tr
                       key={log.id}
-                      className="transition-colors hover:bg-surface-2"
+                      className="transition-colors hover:bg-canvas"
                     >
                       <td className="px-5 py-3">
                         <span className="pill bg-surface-2 capitalize text-ink-3">
@@ -227,7 +253,7 @@ export default async function ProjectEventDetailPage({
               </table>
             </div>
           ) : (
-            <div className="px-5 py-10 text-center">
+            <div className="px-5 py-8 text-center">
               <p className="text-sm font-medium text-ink">
                 No delivery attempts yet
               </p>
@@ -240,9 +266,9 @@ export default async function ProjectEventDetailPage({
         </div>
 
         {/* Status timeline — Received, then one step per delivery attempt */}
-        <div className="card p-5">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
           <Micro>Status timeline</Micro>
-          <ol className="mt-6 space-y-6">
+          <ol className="mt-4 space-y-4">
             {timeline.map((step, i, arr) => (
               <li key={`${step.label}-${i}`} className="relative flex gap-4">
                 <div className="flex flex-col items-center">

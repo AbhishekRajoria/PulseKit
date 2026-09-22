@@ -84,6 +84,19 @@ export default async function DocsPage() {
                 project.
               </DocP>
               <Code filename="bash">{installCode}</Code>
+              <DocP>
+                Published as{' '}
+                <a
+                  href="https://www.npmjs.com/package/pulsekit-sdk"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-[13px] text-ink underline underline-offset-2 hover:text-copper"
+                >
+                  pulsekit-sdk
+                </a>{' '}
+                (v0.1.0) — works with any Node 18+ runtime, no framework
+                required.
+              </DocP>
             </DocSection>
 
             <DocSection id="quickstart" index="02" title="Quickstart">

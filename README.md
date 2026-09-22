@@ -328,7 +328,7 @@ API_URL=https://pulsekit-api.up.railway.app
 NEXT_PUBLIC_WS_URL=wss://pulsekit-api.up.railway.app
 ```
 
-Apply the six migrations and seed on Neon before the first deploy. The seed creates one user and one project so the dashboard is not empty on first load.
+Apply the seven migrations and seed on Neon before the first deploy. The seed creates one user and one project so the dashboard is not empty on first load.
 
 ---
 
@@ -336,19 +336,20 @@ Apply the six migrations and seed on Neon before the first deploy. The seed crea
 
 ### API — integration suite
 
-34 tests across 4 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
+37 tests across 5 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
 
 | Suite | Tests | Covers |
 |---|---|---|
 | `auth.integration.test.ts` | 7 | Register (incl. Set-Cookie session), login, cookie session, logout, protected routes, orphan session |
 | `project.integration.test.ts` | 19 | CRUD, PATCH update + rate-limit validation, DELETE + event cascade, ownership scoping, duplicate-name handling, auth isolation, channel config (merge/save/disable, email + Slack validation) |
 | `event.integration.test.ts` | 6 | Ingest + queue assertion, `event_received` pub/sub broadcast, validation errors, auth isolation |
+| `notification.integration.test.ts` | 3 | Inbox listing, read state, auth isolation |
 | `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, window reset |
 
 The event suite asserts on queue state (`getJobCounts()`) rather than `delivery_logs` rows — queue counts are deterministic whether or not a live worker is consuming the queue.
 
 ```bash
-# Prerequisites: pulsedb_test exists, migrations 001–006 applied, Postgres + Redis running
+# Prerequisites: pulsedb_test exists, migrations 001–007 applied, Postgres + Redis running
 cd apps/api
 npm test
 ```
@@ -372,7 +373,7 @@ npm test
 apps/
   api/                        Express API + BullMQ worker
     db/
-      migrations/             001–006 — canonical schema
+      migrations/             001–007 — canonical schema
       seed.sql                Dev bootstrap: 1 user + 1 project
     src/
       controllers/            auth, event, notification, project
