@@ -1,8 +1,12 @@
 # PulseKit SDK
 
+[![npm version](https://img.shields.io/npm/v/pulsekit-sdk?label=pulsekit-sdk)](https://www.npmjs.com/package/pulsekit-sdk)
+
 One function call. PulseKit handles the delivery.
 
 `pulsekit-sdk` is the official TypeScript client for the [PulseKit](https://github.com/AbhishekRajoria/PulseKit) notification API — multi-channel delivery (email, Slack, in-app), retries, rate limiting, and real-time delivery status behind a single `notify()` call.
+
+**[npm](https://www.npmjs.com/package/pulsekit-sdk) · [Dashboard](https://get-pulsekit.vercel.app) · [Docs](https://get-pulsekit.vercel.app/docs) · [GitHub](https://github.com/AbhishekRajoria/PulseKit)**
 
 ## Install
 
@@ -89,3 +93,9 @@ npm run build # tsup → ESM + CJS + type declarations in dist/
 npm test      # vitest — mocked-fetch contract suite
 npm pack      # inspect the publish tarball
 ```
+
+## Notes
+
+- **Rate limits** — projects accept 5–30 events/min (default 30). Breaching it returns HTTP `429` with a `Retry-After: 60` header, which `notify()` surfaces as `null` — back off and retry.
+- **API keys** — a project key is shown exactly once at creation. It authenticates every call as `Authorization: Bearer <key>`.
+- **Version** — `0.1.0`. The wire contract is `POST /api/v1/events` → `202 Accepted` with `{ eventId, receivedAt }`.
