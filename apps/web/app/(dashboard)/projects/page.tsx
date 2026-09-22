@@ -3,7 +3,6 @@ import { fetchApi } from '@/lib/api'
 import type { ApiResponse, Project, ProjectStats } from '@/types'
 import type { Metadata } from 'next'
 import { FolderKanban } from 'lucide-react'
-import CreateProjectForm from './create-form'
 import ProjectsBrowser from './projects-browser'
 
 export const metadata: Metadata = {
@@ -63,33 +62,31 @@ export default async function ProjectsPage() {
         filterOnly
       />
 
-      {/* Project grid */}
-      {projects.length > 0 && (
-        <ProjectsBrowser
-          items={items}
-          eventUrl={`${apiUrl}/api/v1/events`}
-          gridOnly
-          canCreate={items.length < 5}
-        />
-      )}
-
-      {/* Empty state */}
+      {/* Empty hint — no form here. Creation happens through the grid's
+          New-project card below, whose instance (and its success modal)
+          survives the empty→populated transition. */}
       {projects.length === 0 && (
-        <div className="grid min-h-[500px] place-items-center rounded-2xl border border-dashed border-strong-border">
-          <div className="max-w-sm text-center">
+        <div className="grid min-h-[240px] place-items-center rounded-2xl border border-dashed border-strong-border">
+          <div className="max-w-sm px-6 py-10 text-center">
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl border border-border bg-card text-ink-3">
               <FolderKanban className="h-5 w-5" />
             </div>
             <h2 className="mt-5 text-sm font-semibold text-ink">No projects yet</h2>
             <p className="mt-2 text-sm text-ink-2">
-              Create a project to get your API key and start sending events.
+              Create a project below to get your API key and start sending events.
             </p>
-            <div className="mt-6">
-              <CreateProjectForm eventUrl={`${apiUrl}/api/v1/events`} />
-            </div>
           </div>
         </div>
       )}
+
+      {/* Project grid — always mounted so the create form instance (and its
+          one-time key modal) is never unmounted by creation itself */}
+      <ProjectsBrowser
+        items={items}
+        eventUrl={`${apiUrl}/api/v1/events`}
+        gridOnly
+        canCreate={items.length < 5}
+      />
     </div>
   )
 }

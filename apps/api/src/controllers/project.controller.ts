@@ -324,6 +324,11 @@ export const updateChannels = async (
         });
       }
 
+      // Disabled channels carry nothing to validate — the merge step below
+      // removes the channel key. Validating here rejects stored empty
+      // fields (e.g. an empty slack webhook) on every unrelated save.
+      if (config.enabled === false) continue;
+
       if (channel === "email" && config.to !== undefined) {
         if (typeof config.to !== "string" || !emailRe.test(config.to.trim())) {
           return res.status(400).json({
