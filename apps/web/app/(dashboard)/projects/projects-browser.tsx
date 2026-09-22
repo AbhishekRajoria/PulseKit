@@ -60,7 +60,7 @@ export default function ProjectsBrowser({
   if (actionsOnly) {
     if (!canCreate) return null
     return (
-      <CreateProjectForm variant="button" eventUrl={eventUrl} />
+      <CreateProjectForm variant="button" eventUrl={eventUrl} openSignal />
     )
   }
 
@@ -69,7 +69,7 @@ export default function ProjectsBrowser({
       <div
         role="tablist"
         aria-label="Filter projects"
-        className="mb-6 inline-flex items-center gap-1 rounded-lg border border-border bg-card p-0.5"
+        className="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-0.5"
       >
         {(
           [

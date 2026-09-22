@@ -6,12 +6,37 @@ import { Check, Copy, Plus, X } from 'lucide-react'
 import { createProject } from '@/app/actions/projects'
 import { AlertError } from '@/app/components/Primitives'
 
+// Button that opens the persistent header create-form modal via event.
+// For server-rendered empty states that must not own the modal themselves.
+export function OpenCreateButton({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        window.dispatchEvent(new Event('pulsekit:open-create'))
+      }
+      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-primary-action px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover ${className}`}
+    >
+      <Plus className="h-4 w-4" />
+      {children}
+    </button>
+  )
+}
+
 export default function CreateProjectForm({
   eventUrl,
   variant,
+  openSignal,
 }: {
   eventUrl?: string
   variant?: 'card' | 'button'
+  openSignal?: boolean
 }) {
   const [state, formAction, pending] = useActionState(createProject, {})
   const [copied, setCopied] = useState(false)
@@ -62,6 +87,16 @@ export default function CreateProjectForm({
     setOpen(true)
     setSuccessDismissed(false)
   }
+
+  // Global opener — lets a button elsewhere on the page (e.g. an empty
+  // state panel whose own subtree would unmount on success) open THIS
+  // instance's modal, so the one-time key modal always survives creation.
+  useEffect(() => {
+    if (!openSignal) return
+    const onOpen = () => openForm()
+    window.addEventListener('pulsekit:open-create', onOpen)
+    return () => window.removeEventListener('pulsekit:open-create', onOpen)
+  }, [openSignal])
 
   return (
     <>
