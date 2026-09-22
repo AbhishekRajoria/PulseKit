@@ -31,22 +31,34 @@ export default async function ProjectEventsPage({
 }) {
   const { id: projectId } = await params
 
-  const res = await fetchApi(`/api/v1/events?project_id=${projectId}`)
-  const data: ApiResponse<Event[]> = await res.json()
+  const [eventsRes, projectRes] = await Promise.all([
+    fetchApi(`/api/v1/events?project_id=${projectId}`),
+    fetchApi(`/api/v1/projects/${projectId}`),
+  ])
+  const data: ApiResponse<Event[]> = await eventsRes.json()
   const events = data.data ?? []
+
+  let projectName = 'Project'
+  if (projectRes.ok) {
+    const projectData = (await projectRes.json()) as ApiResponse<Project>
+    if (projectData.data?.name) projectName = projectData.data.name
+  }
 
   const curlSnippet = `curl -X POST ${apiUrl}/api/v1/events \\
   -H "Authorization: Bearer $PULSEKIT_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"event_name":"payment.failed","user_id":"user_123","payload":{"amount":9900,"currency":"INR"}}'`
+  -d '{
+    "event_name": "invoice.paid",
+    "user_id": "usr_4f91",
+    "payload": { "amount": 2400, "currency": "USD" }
+  }'`
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <EventsDashboard
-        projectId={projectId}
-        initialEvents={events}
-        curlSnippet={curlSnippet}
-      />
-    </div>
+    <EventsDashboard
+      projectId={projectId}
+      projectName={projectName}
+      initialEvents={events}
+      curlSnippet={curlSnippet}
+    />
   )
 }

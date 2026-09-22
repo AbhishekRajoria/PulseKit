@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 
 type ConnStatus = 'connecting' | 'open' | 'closed'
 
-const statusText: Record<ConnStatus, string> = {
-  open: 'Connected',
-  connecting: 'Connecting…',
-  closed: 'Disconnected',
-}
-
-// Compact 36px status banner perched above the events table.
-// Green ping when the socket is open, amber while (re)connecting, gray when closed.
-export function LiveFeed({ projectId }: { projectId: string }) {
+// Compact stream indicator for the events feed toolbar.
+// Copper ping while the socket is open, amber while (re)connecting, gray when closed.
+export function LiveFeed({
+  projectId,
+  updates = 0,
+}: {
+  projectId: string
+  updates?: number
+}) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL
   const [connStatus, setConnStatus] = useState<ConnStatus>(
     wsUrl ? 'connecting' : 'closed',
@@ -57,43 +57,35 @@ export function LiveFeed({ projectId }: { projectId: string }) {
   }, [projectId, wsUrl])
 
   return (
-    <section
+    <p
       aria-label="Live feed status"
-      className="flex h-9 items-center justify-between rounded-t-lg border border-b-0 border-border bg-surface-2 px-4"
+      className={`flex shrink-0 items-center gap-1.5 text-xs font-medium ${
+        connStatus === 'open'
+          ? 'text-copper'
+          : connStatus === 'connecting'
+            ? 'text-pending'
+            : 'text-ink-3'
+      }`}
     >
-      <div className="flex items-center gap-2.5">
-        <span className="relative flex h-2 w-2" aria-hidden="true">
-          {connStatus === 'open' && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-delivered opacity-60" />
-          )}
-          <span
-            className={`relative inline-flex h-2 w-2 rounded-full ${
-              connStatus === 'open'
-                ? 'bg-status-delivered'
-                : connStatus === 'connecting'
-                  ? 'bg-pending'
-                  : 'bg-ink-3'
-            }`}
-          />
-        </span>
-        <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-3">
-          WebSocket Live Feed
-        </p>
-        <p
-          className={`text-[11px] font-medium ${
+      <span className="relative flex h-2 w-2" aria-hidden="true">
+        {connStatus === 'open' && (
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-copper opacity-60" />
+        )}
+        <span
+          className={`relative inline-flex h-2 w-2 rounded-full ${
             connStatus === 'open'
-              ? 'text-status-delivered'
+              ? 'bg-copper'
               : connStatus === 'connecting'
-                ? 'text-pending'
-                : 'text-ink-3'
+                ? 'bg-pending'
+                : 'bg-ink-3'
           }`}
-        >
-          {statusText[connStatus]}
-        </p>
-      </div>
-      <p className="hidden text-[11px] italic text-ink-4 sm:block">
-        Listening for incoming events…
-      </p>
-    </section>
+        />
+      </span>
+      {connStatus === 'open'
+        ? `WebSocket stream · ${updates} updates`
+        : connStatus === 'connecting'
+          ? 'Connecting…'
+          : `Stream offline · ${updates} updates`}
+    </p>
   )
 }

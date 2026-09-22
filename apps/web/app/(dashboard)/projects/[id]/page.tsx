@@ -1,53 +1,56 @@
-export const dynamic = 'force-dynamic'
-import { fetchApi } from '@/lib/api'
-import type { ApiResponse, Project, ProjectStats } from '@/types'
-import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { Micro } from '@/app/components/Primitives'
-import { CodeBlock } from './code-block'
+export const dynamic = "force-dynamic";
+import { fetchApi } from "@/lib/api";
+import type { ApiResponse, Project, ProjectStats } from "@/types";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Micro } from "@/app/components/Primitives";
+import { CodeBlock } from "./code-block";
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params
-  const res = await fetchApi(`/api/v1/projects/${id}`)
-  if (!res.ok) return { title: 'Project' }
-  const data = (await res.json()) as ApiResponse<Project>
-  const name = data.data?.name
+  const { id } = await params;
+  const res = await fetchApi(`/api/v1/projects/${id}`);
+  if (!res.ok) return { title: "Project" };
+  const data = (await res.json()) as ApiResponse<Project>;
+  const name = data.data?.name;
   return {
-    title: name ? `${name} — project` : 'Project',
+    title: name ? `${name} — project` : "Project",
     description: name
       ? `Project ${name} — API key, events, and delivery notifications.`
-      : 'PulseKit project overview.',
-  }
+      : "PulseKit project overview.",
+  };
 }
 
-const apiUrl = (process.env.API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+const apiUrl = (process.env.API_URL ?? "http://localhost:8080").replace(
+  /\/$/,
+  "",
+);
 
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = await params
-  const res = await fetchApi(`/api/v1/projects/${id}`)
+  const { id } = await params;
+  const res = await fetchApi(`/api/v1/projects/${id}`);
 
-  if (!res.ok) notFound()
+  if (!res.ok) notFound();
 
-  const response: ApiResponse<Project> = await res.json()
-  const project = response.data
-  if (!project) notFound()
+  const response: ApiResponse<Project> = await res.json();
+  const project = response.data;
+  if (!project) notFound();
 
-  const statsRes = await fetchApi(`/api/v1/projects/${id}/stats`)
+  const statsRes = await fetchApi(`/api/v1/projects/${id}/stats`);
   const stats: ProjectStats | null = statsRes.ok
-    ? ((await statsRes.json()) as ApiResponse<ProjectStats>).data ?? null
-    : null
+    ? (((await statsRes.json()) as ApiResponse<ProjectStats>).data ?? null)
+    : null;
 
-  const hasSignal = (stats?.event_count ?? 0) > 0
+  const hasSignal = (stats?.event_count ?? 0) > 0;
 
   const curlSnippet = `curl -X POST ${apiUrl}/api/v1/events \\
   -H "Authorization: Bearer $PULSEKIT_API_KEY" \\
@@ -56,7 +59,7 @@ export default async function ProjectDetailPage({
     "event_name": "invoice.paid",
     "user_id": "usr_4f91",
     "payload": { "amount": 2400, "currency": "USD" }
-  }'`
+  }'`;
 
   const sdkSnippet = `import PulseKit from 'pulsekit';
 
@@ -66,13 +69,16 @@ await pulsekit.events.track({
   event_name: 'invoice.paid',
   user_id: 'usr_4f91',
   payload: { amount: 2400, currency: 'USD' },
-});`
+});`;
 
   return (
     <div>
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-ink-3">
-        <Link href="/projects" className="inline-flex items-center gap-1 hover:text-ink transition-colors">
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-1 hover:text-ink transition-colors"
+        >
           <ArrowLeft className="h-3 w-3" />
           Projects
         </Link>
@@ -92,9 +98,9 @@ await pulsekit.events.track({
             <span>{project.rate_limit_per_min} req/min</span>
             <span className="text-ink-3">·</span>
             <span>
-              created{' '}
-              {new Date(project.created_at).toLocaleDateString('en-IN', {
-                dateStyle: 'medium',
+              created{" "}
+              {new Date(project.created_at).toLocaleDateString("en-IN", {
+                dateStyle: "medium",
               })}
             </span>
           </div>
@@ -126,13 +132,13 @@ await pulsekit.events.track({
             <div className="pr-5">
               <Micro>Events</Micro>
               <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
-                {stats ? stats.event_count.toLocaleString('en-IN') : '0'}
+                {stats ? stats.event_count.toLocaleString("en-IN") : "0"}
               </div>
             </div>
             <div className="pl-5">
               <Micro>Notifications</Micro>
               <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
-                {stats ? stats.notification_count.toLocaleString('en-IN') : '0'}
+                {stats ? stats.notification_count.toLocaleString("en-IN") : "0"}
               </div>
             </div>
           </div>
@@ -140,7 +146,7 @@ await pulsekit.events.track({
         <div className="rounded-2xl border border-border bg-card p-5 shadow-card sm:w-[180px]">
           <Micro>Users</Micro>
           <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
-            {stats ? stats.unique_users.toLocaleString('en-IN') : '0'}
+            {stats ? stats.unique_users.toLocaleString("en-IN") : "0"}
           </div>
         </div>
       </div>
@@ -155,7 +161,7 @@ await pulsekit.events.track({
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-copper" />
               </span>
               <span className="text-xs font-medium text-copper">
-                {hasSignal ? 'Live' : 'Awaiting first signal'}
+                {hasSignal ? "Live" : "Awaiting first signal"}
               </span>
             </div>
             <h2 className="mt-3 text-lg font-semibold text-ink">
@@ -167,9 +173,9 @@ await pulsekit.events.track({
             </p>
             <div className="mt-5 space-y-3 text-sm">
               {[
-                'Copy your API key',
-                'Send the request',
-                'Inspect the delivery log',
+                "Copy your API key",
+                "Send the request",
+                "Inspect the delivery log",
               ].map((step, i) => (
                 <div className="flex items-center gap-2" key={step}>
                   <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface-2 font-mono text-[10px] leading-none tabular-nums text-ink-2">
@@ -185,7 +191,6 @@ await pulsekit.events.track({
           </div>
         </div>
       </div>
-
     </div>
-  )
+  );
 }

@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { CornerDownLeft, FileTerminal } from 'lucide-react'
-import { Code } from './Primitives'
+import { ChevronRight } from 'lucide-react'
+import { Micro, Mono } from './Primitives'
 import { EventsList } from './EventsList'
 import { LiveFeed } from './LiveFeed'
 
@@ -36,15 +36,18 @@ function newestId(rows: EventRow[]): string | null {
 
 export function EventsDashboard({
   projectId,
+  projectName,
   initialEvents,
   curlSnippet,
 }: {
   projectId: string
+  projectName: string
   initialEvents: EventRow[]
   curlSnippet: string
 }) {
   const [events, setEvents] = useState(initialEvents)
   const [flashId, setFlashId] = useState<string | null>(null)
+  const [updates, setUpdates] = useState(0)
   const newestRef = useRef<string | null>(newestId(initialEvents))
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -72,6 +75,7 @@ export function EventsDashboard({
         const nextNewest = newestId(next)
         if (nextNewest && nextNewest !== newestRef.current) {
           setFlashId(nextNewest)
+          setUpdates((u) => u + 1)
           if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
           flashTimerRef.current = setTimeout(() => setFlashId(null), FLASH_MS)
         }
@@ -100,101 +104,72 @@ export function EventsDashboard({
 
   return (
     <div>
-      <div className="mt-4 flex items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Events
-        </h1>
-        <span className="pill bg-surface-2 font-mono text-ink-3">
-          {total} {total === 1 ? 'event' : 'events'}
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-ink-3">
+        <Link href="/projects" className="transition-colors hover:text-ink">
+          All projects
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <Link
+          href={`/projects/${projectId}`}
+          className="transition-colors hover:text-ink"
+        >
+          {projectName}
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <span className="font-medium text-ink">Events</span>
+      </nav>
+
+      {/* Title */}
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">
+        Events
+      </h1>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2">
+        <span className="font-mono tabular-nums">
+          {total.toLocaleString()} processed
         </span>
+        <span className="text-ink-3">·</span>
+        <Mono className="break-all">{projectId}</Mono>
       </div>
 
-      {events.length === 0 ? (
-        /* Empty state — a fresh project's first surface a reviewer sees */
-        <div className="mt-10">
-          <div className="card overflow-hidden">
-            <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
-              <div className="grid h-16 w-16 place-items-center rounded-lg bg-surface-2 text-ink-4">
-                <FileTerminal className="h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-ink">No events yet</p>
-                <p className="mt-1 text-xs text-ink-3">
-                  Send your first event and it will appear here in real time.
-                </p>
-              </div>
-            </div>
-
-            <div className="border-t border-border px-6 py-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-                Quick start — send an event with curl
-              </p>
-              <div className="mt-3">
-                <Code filename="shell">{curlSnippet}</Code>
-              </div>
-              <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-3">
-                <CornerDownLeft className="h-3.5 w-3.5" />
-                Get your API key from{' '}
-                <Link
-                  href={`/projects/${projectId}`}
-                  className="cursor-pointer font-medium text-ink underline underline-offset-2 hover:text-copper"
-                >
-                  Project overview
-                </Link>
-                , then send.
-              </p>
-            </div>
+      {/* Stats — single card, four columns with dividers */}
+      <div className="mt-6 grid grid-cols-2 rounded-2xl border border-border bg-card shadow-card lg:grid-cols-4">
+        <div className="border-border px-5 py-5 max-lg:odd:border-r max-lg:[&:nth-child(-n+2)]:border-b lg:border-r lg:last:border-r-0">
+          <Micro>Total</Micro>
+          <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+            {total.toLocaleString()}
           </div>
         </div>
-      ) : (
-        <>
-          {/* Stat strip — uniform 2xl display across all four */}
-          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div className="card px-5 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                Total events
-              </p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-ink">
-                {total.toLocaleString()}
-              </p>
-            </div>
-            <div className="card px-5 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                Delivered
-              </p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-status-delivered">
-                {delivered.toLocaleString()}
-              </p>
-            </div>
-            <div className="card px-5 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                Failed
-              </p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-failure">
-                {failed.toLocaleString()}
-              </p>
-            </div>
-            <div className="card px-5 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                Pending
-              </p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-pending">
-                {pending.toLocaleString()}
-              </p>
-            </div>
+        <div className="px-5 py-5 max-lg:[&:nth-child(-n+2)]:border-b lg:border-r lg:border-border">
+          <Micro>Delivered</Micro>
+          <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+            {delivered.toLocaleString()}
           </div>
+        </div>
+        <div className="border-border px-5 py-5 max-lg:border-r lg:border-r">
+          <Micro>Failed</Micro>
+          <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+            {failed.toLocaleString()}
+          </div>
+        </div>
+        <div className="px-5 py-5">
+          <Micro>Pending</Micro>
+          <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+            {pending.toLocaleString()}
+          </div>
+        </div>
+      </div>
 
-          {/* Live feed banner attached above the events table */}
-          <div className="mt-6">
-            <LiveFeed projectId={projectId} />
-            <EventsList
-              events={events}
-              projectId={projectId}
-              flashId={flashId}
-            />
-          </div>
-        </>
-      )}
+      {/* Feed card — search toolbar, live table or empty state */}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <EventsList
+          events={events}
+          projectId={projectId}
+          flashId={flashId}
+          curlSnippet={curlSnippet}
+          toolbarRight={<LiveFeed projectId={projectId} updates={updates} />}
+        />
+      </div>
     </div>
   )
 }

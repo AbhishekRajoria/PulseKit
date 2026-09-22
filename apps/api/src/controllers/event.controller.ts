@@ -39,7 +39,8 @@ export const getAllEvents = async (
       FROM events e LEFT JOIN delivery_logs d
       ON e.id = d.event_id
       WHERE e.project_id = $1
-      GROUP BY e.id`,
+      GROUP BY e.id
+      ORDER BY e.received_at DESC, e.id DESC`,
       [project_id],
     );
 
