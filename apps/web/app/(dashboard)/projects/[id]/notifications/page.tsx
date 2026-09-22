@@ -1,9 +1,17 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { BellDot, CheckCheck, ChevronDown, LoaderCircle, Search } from 'lucide-react'
-import type { ApiResponse, Notification } from '@/types'
+import {
+  BellDot,
+  ChevronDown,
+  ChevronRight,
+  CircleCheck,
+  LoaderCircle,
+  Search,
+} from 'lucide-react'
+import type { ApiResponse, Notification, Project } from '@/types'
 
 type NotificationsResponse = {
   notifications: Notification[]
@@ -12,8 +20,15 @@ type NotificationsResponse = {
 
 type UserWithNotifications = {
   user_id: string
+  display_name: string | null
   unread_count: number
   last_notification_at: string
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return parts[0].slice(0, 2).toUpperCase()
 }
 
 function timeAgo(dateStr: string): string {
@@ -39,11 +54,31 @@ export default function NotificationsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
   const [userQuery, setUserQuery] = useState('')
+  const [projectName, setProjectName] = useState('Project')
+
+  const activeUser = users?.find((u) => u.user_id === userId) ?? null
+  const activeName = activeUser?.display_name || userId || ''
 
   const q = userQuery.trim().toLowerCase()
   const visibleUsers = users
     ? users.filter((u) => u.user_id.toLowerCase().includes(q))
     : null
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return
+        const list: Project[] = Array.isArray(data.data) ? data.data : []
+        const match = list.find((p) => p.id === projectId)
+        if (match) setProjectName(match.name)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
 
   useEffect(() => {
     let cancelled = false
@@ -179,48 +214,47 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mt-6 flex items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Notifications
-        </h1>
-        <span className="pill bg-surface-2 text-ink-3">
-          In-app · WebSocket
-        </span>
-      </div>
+    <div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-ink-3">
+        <Link href="/projects" className="transition-colors hover:text-ink">
+          All projects
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <Link
+          href={`/projects/${projectId}`}
+          className="transition-colors hover:text-ink"
+        >
+          {projectName}
+        </Link>
+        <ChevronRight className="h-3 w-3 text-ink-4" />
+        <span className="font-medium text-ink">Notifications</span>
+      </nav>
+
+      {/* Title */}
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">
+        In-app notifications
+      </h1>
       <p className="mt-1 text-sm text-ink-3">
-        In-app messages delivered to end users.
+        Per-user feeds and read state.
       </p>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card lg:grid lg:grid-cols-[256px_1fr]">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-card lg:grid lg:grid-cols-[340px_1fr]">
         {/* User list */}
-        <aside className="h-fit overflow-hidden border-r border-border bg-canvas/40 lg:sticky lg:top-24">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-              Inboxes
-            </h2>
-            {users && (
-              <span className="pill bg-surface-2 font-mono text-ink-3">
-                {users.length}
-              </span>
-            )}
-          </div>
-
-          {Array.isArray(users) && users.length > 0 && (
-            <div className="border-b border-border p-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-4" />
-                <input
-                  type="search"
-                  value={userQuery}
-                  onChange={(e) => setUserQuery(e.target.value)}
-                  placeholder="Search user_id…"
-                  aria-label="Search inboxes"
-                  className="h-9 w-full rounded-md border border-border-strong bg-surface pl-9 pr-3 font-mono text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:ring-2 focus:ring-ink/10"
-                />
-              </div>
+        <aside className="border-border max-lg:border-b lg:border-r">
+          <div className="p-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-4" />
+              <input
+                type="search"
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                placeholder="Search user_id…"
+                aria-label="Search inboxes"
+                className="h-10 w-full rounded-lg border border-border-strong bg-card pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:ring-2 focus:ring-ink/10"
+              />
             </div>
-          )}
+          </div>
 
           {users === null && (
             <div className="flex flex-col items-center gap-3 px-6 py-14">
@@ -246,14 +280,15 @@ export default function NotificationsPage() {
                   No inboxes match “{userQuery}”.
                 </p>
               )}
-              <ul className="divide-y divide-border">
+              <ul>
                 {(visibleUsers ?? users).map((u) => {
                   const active = u.user_id === userId
-                  const lastAgo = u.last_notification_at
-                    ? timeAgo(u.last_notification_at)
-                    : '—'
+                  const name = u.display_name || u.user_id
                   return (
-                    <li key={u.user_id}>
+                    <li
+                      key={u.user_id}
+                      className="border-b border-border/50 last:border-b-0"
+                    >
                       <button
                         type="button"
                         onClick={() => {
@@ -261,25 +296,25 @@ export default function NotificationsPage() {
                           setUserId(u.user_id)
                           setExpandedId(null)
                         }}
-                        className={`flex w-full cursor-pointer items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors ${
-                          active
-                            ? 'border-l-copper bg-card'
-                            : 'border-l-transparent hover:bg-surface-2'
+                        className={`flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors ${
+                          active ? 'bg-copper-tint/50' : 'hover:bg-surface-2/60'
                         }`}
                       >
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 font-mono text-[10px] font-semibold text-ink-2">
-                          {u.user_id.slice(0, 2).toUpperCase()}
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] font-semibold text-white">
+                          {initials(u.display_name || u.user_id)}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-mono text-xs text-ink">
-                            {u.user_id}
+                          <span className="block truncate text-sm font-medium text-ink">
+                            {name}
                           </span>
-                          <span className="mt-0.5 block text-[11px] text-ink-3">
-                            last {lastAgo}
-                          </span>
+                          {u.display_name && (
+                            <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-3">
+                              {u.user_id}
+                            </span>
+                          )}
                         </span>
                         {u.unread_count > 0 && (
-                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-copper px-1.5 font-mono text-[10px] font-semibold tabular-nums text-white">
+                          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-failure px-1.5 font-mono text-[10px] font-semibold tabular-nums text-white">
                             {u.unread_count}
                           </span>
                         )}
@@ -294,32 +329,25 @@ export default function NotificationsPage() {
 
         {/* Feed */}
         <section className="overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-            <div className="flex min-w-0 items-center gap-3">
-              <h2 className="truncate text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                {notifs
-                  ? `${notifs.notifications.length} ${notifs.notifications.length === 1 ? 'notification' : 'notifications'}`
-                  : 'Notifications'}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+            <div className="min-w-0">
+              <h2 className="truncate text-[15px] font-semibold text-ink">
+                {activeName || 'Notifications'}
               </h2>
               {userId && (
-                <code className="truncate font-mono text-[11px] text-ink-3">
+                <p className="mt-0.5 truncate font-mono text-[11px] text-ink-3">
                   {userId}
-                </code>
-              )}
-              {notifs && notifs.unread_count > 0 && (
-                <span className="pill bg-copper-tint font-mono text-copper tabular-nums">
-                  {notifs.unread_count} unread
-                </span>
+                </p>
               )}
             </div>
-            {notifs && notifs.unread_count > 0 && (
+            {notifs && (
               <button
                 type="button"
                 onClick={markAllAsRead}
-                disabled={markingAll}
-                className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-ink-3 transition-colors hover:text-ink disabled:cursor-default disabled:opacity-50"
+                disabled={markingAll || notifs.unread_count === 0}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border-strong bg-card px-3.5 py-2 text-xs font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink disabled:cursor-default disabled:opacity-50"
               >
-                <CheckCheck className="h-3.5 w-3.5" />
+                <CircleCheck className="h-3.5 w-3.5" />
                 {markingAll ? 'Marking…' : 'Mark all read'}
               </button>
             )}
@@ -366,46 +394,59 @@ export default function NotificationsPage() {
           )}
 
           {!loading && !error && notifs && notifs.notifications.length > 0 && (
-            <ul className="divide-y divide-border">
+            <ul>
               {notifs.notifications.map((n) => {
                 const expanded = expandedId === n.id
+                const hasPayload =
+                  n.payload && Object.keys(n.payload).length > 0
                 return (
-                  <li key={n.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleRowClick(n)}
-                      className={`group flex w-full cursor-pointer items-start gap-3 border-l-2 px-4 py-4 text-left transition-colors hover:bg-canvas ${
-                        !n.read ? 'border-l-copper bg-card' : 'border-l-transparent'
-                      }`}
-                    >
-                      <span className="min-w-0 flex-1">
+                  <li
+                    key={n.id}
+                    className={`border-b border-border/50 px-5 py-4 last:border-b-0 ${
+                      !n.read ? 'bg-copper-tint/40' : ''
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span
+                        className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                          n.read ? 'bg-ink-3' : 'bg-copper'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRowClick(n)}
+                        className="min-w-0 flex-1 cursor-pointer text-left"
+                      >
                         <span className="flex items-baseline justify-between gap-4">
-                          <span
-                            className={`truncate text-sm ${
-                              n.read ? 'font-normal text-ink-3' : 'font-medium text-ink'
-                            }`}
-                          >
+                          <span className="truncate text-sm font-semibold text-ink">
                             {n.title}
                           </span>
-                          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-ink-3">
-                            {new Date(n.created_at).toLocaleString('en-IN', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            })}
+                          <span className="shrink-0 whitespace-nowrap font-mono text-[11px] tabular-nums text-ink-3">
+                            {timeAgo(n.created_at)} ago
                           </span>
                         </span>
-                        {n.body && expanded && (
-                          <span className="mt-1.5 block text-sm leading-relaxed text-ink-2">
+                        {n.body && (
+                          <span className="mt-1 block text-sm leading-relaxed text-ink-2">
                             {n.body}
                           </span>
                         )}
-                      </span>
-                      <ChevronDown
-                        className={`mt-1 h-4 w-4 shrink-0 text-ink-3 transition-transform ${
-                          expanded ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
+                        {hasPayload && (
+                          <span className="mt-2 inline-flex items-center gap-1 text-xs text-ink-3 transition-colors hover:text-ink">
+                            {expanded ? 'Hide payload' : 'View payload'}
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 transition-transform ${
+                                expanded ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                    {expanded && hasPayload && (
+                      <pre className="mt-3 overflow-auto rounded-xl bg-code-surface p-4 font-mono text-xs leading-6 text-code-foreground">
+                        {JSON.stringify(n.payload, null, 2)}
+                      </pre>
+                    )}
                   </li>
                 )
               })}

@@ -46,7 +46,11 @@ export const getUsersByProject = async (
       `SELECT
         user_id,
         COUNT(*) FILTER (WHERE read = false)::int AS unread_count,
-        MAX(created_at) AS last_notification_at
+        MAX(created_at) AS last_notification_at,
+        (SELECT n.payload->>'user_name'
+         FROM notifications n
+         WHERE n.project_id = $1 AND n.user_id = notifications.user_id
+         ORDER BY n.created_at DESC LIMIT 1) AS display_name
       FROM notifications
       WHERE project_id = $1
       GROUP BY user_id
@@ -110,7 +114,7 @@ export const getNotifications = async (
     const user_Id = req.params.userId;
 
     const result = await pool.query(
-      `SELECT id, project_id, user_id, title, body, read, created_at
+      `SELECT id, project_id, user_id, title, body, read, created_at, payload
       FROM notifications
       WHERE project_id = $1 AND user_id = $2
       ORDER BY created_at DESC

@@ -95,13 +95,16 @@ const worker = new Worker(
       try {
         // insert notification row for in-app inbox
         await pool.query(
-          `INSERT INTO notifications ( project_id, user_id, title, body )
-        VALUES ($1, $2, $3, $4)`,
+          `INSERT INTO notifications ( project_id, user_id, title, body, payload )
+        VALUES ($1, $2, $3, $4, $5)`,
           [
             job.data.project_id,
             job.data.user_id,
-            `New event: ${job.data.event_name}`,
-            `${job.data.event_name} for user ${job.data.user_id}`,
+            sentenceCase(job.data.event_name),
+            job.data.user_name
+              ? `For ${job.data.user_name} · ${job.data.user_id}`
+              : `For user ${job.data.user_id}`,
+            JSON.stringify(job.data.payload ?? {}),
           ],
         );
 

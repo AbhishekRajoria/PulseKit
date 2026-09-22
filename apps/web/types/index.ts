@@ -27,6 +27,7 @@ export type Notification = {
   body: string | null;
   read: boolean;
   created_at: string;
+  payload?: Record<string, unknown> | null;
 };
 
 export type ProjectChannels = {

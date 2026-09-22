@@ -48,6 +48,7 @@ export type NotificationRow = {
   body: string | null;
   read: boolean;
   created_at: string;
+  payload: Record<string, unknown> | null;
 };
 
 export type User = {
