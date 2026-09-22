@@ -4,16 +4,9 @@ import type { ApiResponse, Project, ProjectStats } from '@/types'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import {
-  ArrowLeft,
-  ChevronRight,
-  Activity,
-  Bell,
-  Check,
-  KeyRound,
-} from 'lucide-react'
-import { CopyButton, Micro } from '@/app/components/Primitives'
-import { RevealKey } from './reveal-key'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { Micro } from '@/app/components/Primitives'
+import { CodeBlock } from './code-block'
 
 export async function generateMetadata({
   params,
@@ -59,176 +52,140 @@ export default async function ProjectDetailPage({
   const curlSnippet = `curl -X POST ${apiUrl}/api/v1/events \\
   -H "Authorization: Bearer $PULSEKIT_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"event_name":"payment.failed","user_id":"user_123","payload":{"amount":9900,"currency":"INR"}}'`
+  -d '{
+    "event_name": "invoice.paid",
+    "user_id": "usr_4f91",
+    "payload": { "amount": 2400, "currency": "USD" }
+  }'`
+
+  const sdkSnippet = `import PulseKit from 'pulsekit';
+
+const pulsekit = new PulseKit(process.env.PULSEKIT_API_KEY);
+
+await pulsekit.events.track({
+  event_name: 'invoice.paid',
+  user_id: 'usr_4f91',
+  payload: { amount: 2400, currency: 'USD' },
+});`
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <Link
-        href="/projects"
-        className="group inline-flex cursor-pointer items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-ink"
-      >
-        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-        All projects
-      </Link>
+    <div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-ink-3">
+        <Link href="/projects" className="inline-flex items-center gap-1 hover:text-ink transition-colors">
+          <ArrowLeft className="h-3 w-3" />
+          Projects
+        </Link>
+        <span className="text-ink-4">/</span>
+        <span className="font-medium text-ink">{project.name}</span>
+      </nav>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <Micro>Project</Micro>
-          <div className="mt-1 flex min-w-0 items-center gap-2.5">
-            <h1 className="truncate text-xl font-semibold tracking-tight text-ink">
-              {project.name}
-            </h1>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border bg-surface-2 py-0.5 pl-2 pr-0.5 font-mono text-[11px] text-ink-3">
-              {project.id}
-              <CopyButton value={project.id} />
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-6 sm:mt-2">
-          <div>
-            <Micro>Rate limit</Micro>
-            <p className="mt-1 font-mono text-sm tabular-nums text-ink">
-              {project.rate_limit_per_min} req/min
-            </p>
-          </div>
-          <div>
-            <Micro>Created</Micro>
-            <p className="mt-1 text-sm text-ink">
+      {/* Title row */}
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            {project.name}
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs tabular-nums text-ink-2">
+            <span>{project.id}</span>
+            <span className="text-ink-3">·</span>
+            <span>{project.rate_limit_per_min} req/min</span>
+            <span className="text-ink-3">·</span>
+            <span>
+              created{' '}
               {new Date(project.created_at).toLocaleDateString('en-IN', {
                 dateStyle: 'medium',
               })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* API key — hidden by default, password-gated reveal */}
-      <div className="card mt-6 overflow-hidden p-0">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-surface-2 text-ink-3">
-              <KeyRound className="h-3.5 w-3.5" />
             </span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-ink">
-                API Key
-              </p>
-              <p className="text-[11px] text-ink-4">
-                Hidden by default — shown once at creation, reveal with password
-              </p>
-            </div>
           </div>
-          <span className="pill bg-success-tint font-medium text-status-delivered">
-            <Check className="h-3 w-3" />
-            Active
-          </span>
         </div>
-        <RevealKey projectId={project.id} />
-      </div>
-
-      {/* First-signal checklist until the project has received any event */}
-      {!hasSignal ? (
-        <div className="card mt-6 p-6">
-          <h2 className="text-base font-semibold text-ink">
-            Send your first signal
-          </h2>
-          <p className="mt-1 text-sm text-ink-3">
-            Two more steps to receive your first event.
-          </p>
-          <ul className="mt-5">
-            <li className="flex items-center gap-3 border-b border-border py-3.5">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-success-tint text-status-delivered">
-                <Check className="h-3.5 w-3.5" />
-              </span>
-              <p className="text-sm text-ink">Project created &amp; API key generated</p>
-            </li>
-            <li className="flex flex-wrap items-center gap-3 border-b border-border py-3.5">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong font-mono text-xs text-ink-2">
-                2
-              </span>
-              <p className="text-sm text-ink-2">Send your first event</p>
-              <span className="ml-auto">
-                <CopyButton value={curlSnippet} label="Copy cURL" />
-              </span>
-            </li>
-            <li className="flex flex-wrap items-center gap-3 py-3.5">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong font-mono text-xs text-ink-2">
-                3
-              </span>
-              <p className="text-sm text-ink-2">Observe it in the live feed</p>
-              <Link
-                href={`/projects/${id}/events`}
-                prefetch
-                className="ml-auto inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-copper transition-colors hover:text-ink"
-              >
-                Open live feed
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </li>
-          </ul>
-        </div>
-      ) : (
-        /* Quick look cards */
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex items-center gap-2">
           <Link
             href={`/projects/${id}/events`}
             prefetch
-            className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            <div className="flex items-start gap-4">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-ink-3">
-                <Activity className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
-                  Events
-                </p>
-                <p className="mt-1 font-mono text-3xl font-semibold leading-none tabular-nums text-ink">
-                  {stats ? stats.event_count.toLocaleString('en-IN') : '—'}
-                  <span className="ml-1.5 text-sm font-normal text-ink-3">
-                    total
-                  </span>
-                </p>
-                <p className="mt-1.5 text-xs text-ink-4">
-                  View event log and delivery status
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-ink-3 transition-colors group-hover:text-copper" />
+            View events
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-
           <Link
             href={`/projects/${id}/notifications`}
             prefetch
-            className="group card flex items-center justify-between p-5 transition-colors hover:border-border-strong"
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            <div className="flex items-start gap-4">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-ink-3">
-                <Bell className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-ink group-hover:text-ink-2">
-                  Notifications
-                </p>
-                <p
-                  className={`mt-1 font-mono text-3xl font-semibold leading-none tabular-nums ${
-                    (stats?.unread_count ?? 0) > 0 ? 'text-copper' : 'text-ink-4'
-                  }`}
-                >
-                  {stats ? stats.unread_count.toLocaleString('en-IN') : '—'}
-                  <span className="ml-1.5 text-sm font-normal text-ink-3">
-                    unread
-                  </span>
-                </p>
-                <p className="mt-1.5 text-xs text-ink-4">
-                  In-app notifications for end users
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-ink-3 transition-colors group-hover:text-copper" />
+            View notifications
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-      )}
+      </div>
+
+      {/* Stats — compact cards, left aligned */}
+      <div className="mt-6 flex flex-col gap-5 sm:flex-row">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-card sm:w-[380px]">
+          <div className="grid grid-cols-2 divide-x divide-border">
+            <div className="pr-5">
+              <Micro>Events</Micro>
+              <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+                {stats ? stats.event_count.toLocaleString('en-IN') : '0'}
+              </div>
+            </div>
+            <div className="pl-5">
+              <Micro>Notifications</Micro>
+              <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+                {stats ? stats.notification_count.toLocaleString('en-IN') : '0'}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-card sm:w-[180px]">
+          <Micro>Users</Micro>
+          <div className="mt-2 font-mono text-3xl font-semibold tabular-nums text-foreground">
+            {stats ? stats.unique_users.toLocaleString('en-IN') : '0'}
+          </div>
+        </div>
+      </div>
+
+      {/* Send a test event */}
+      <div className="mt-5 rounded-2xl border border-border bg-card p-6 shadow-card">
+        <div className="flex flex-col justify-between gap-6 lg:flex-row">
+          <div className="max-w-md">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-copper opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-copper" />
+              </span>
+              <span className="text-xs font-medium text-copper">
+                {hasSignal ? 'Live' : 'Awaiting first signal'}
+              </span>
+            </div>
+            <h2 className="mt-3 text-lg font-semibold text-ink">
+              Send a test event
+            </h2>
+            <p className="mt-2 text-sm text-ink-2">
+              Your live listener is connected. Send this request and the event
+              appears in the feed within about 2 seconds.
+            </p>
+            <div className="mt-5 space-y-3 text-sm">
+              {[
+                'Copy your API key',
+                'Send the request',
+                'Inspect the delivery log',
+              ].map((step, i) => (
+                <div className="flex items-center gap-2" key={step}>
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface-2 font-mono text-[10px] leading-none tabular-nums text-ink-2">
+                    {i + 1}
+                  </span>
+                  <span className="text-ink-2">{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="min-w-0 flex-1 lg:max-w-2xl">
+            <CodeBlock code={curlSnippet} sdkCode={sdkSnippet} />
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

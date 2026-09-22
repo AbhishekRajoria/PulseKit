@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import { rateLimiter } from "./rateLimiter.ts";
 import { Redis } from "ioredis";
 
-const redis = new Redis();
+const redis = new Redis(process.env.REDIS_URL as string);
 
 const makeReq = (project_id: string) => {
   return {

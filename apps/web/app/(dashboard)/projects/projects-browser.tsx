@@ -1,157 +1,194 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { ChevronRight, Search } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { useState } from 'react'
 import { timeAgo } from '@/lib/format'
 import type { Project, ProjectStats } from '@/types'
+import CreateProjectForm from './create-form'
 
-type Filter = 'all' | 'active' | 'awaiting'
+type Filter = 'all' | 'populated' | 'empty'
 
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'awaiting', label: 'Awaiting First Signal' },
-]
+function Stat({
+  label,
+  value,
+  muted,
+}: {
+  label: string
+  value: string
+  muted?: boolean
+}) {
+  return (
+    <div className="border-r border-border px-5 last:border-r-0">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+        {label}
+      </div>
+      <div
+        className={`mt-2 font-mono text-2xl font-semibold tabular-nums ${
+          muted ? 'text-ink-4' : 'text-foreground'
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  )
+}
 
 export default function ProjectsBrowser({
   items,
+  eventUrl,
+  actionsOnly,
+  filterOnly,
+  gridOnly,
+  canCreate = true,
 }: {
   items: { project: Project; stats: ProjectStats | null }[]
+  eventUrl: string
+  actionsOnly?: boolean
+  filterOnly?: boolean
+  gridOnly?: boolean
+  canCreate?: boolean
 }) {
-  const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return items.filter(({ project, stats }) => {
-      if (q && !project.name.toLowerCase().includes(q)) return false
-      const hasSignal = (stats?.event_count ?? 0) > 0
-      if (filter === 'active' && !hasSignal) return false
-      if (filter === 'awaiting' && hasSignal) return false
-      return true
-    })
-  }, [items, query, filter])
+  const filtered = items.filter(({ stats }) => {
+    if (filter === 'all') return true
+    const hasSignal = (stats?.event_count ?? 0) > 0
+    return filter === 'populated' ? hasSignal : !hasSignal
+  })
 
-  return (
-    <div className="mt-6">
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-4" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search projects…"
-            aria-label="Search projects"
-            className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:ring-2 focus:ring-ink/10"
-          />
-        </div>
-        <div
-          role="tablist"
-          aria-label="Filter projects"
-          className="flex items-center gap-1 rounded-md border border-border bg-surface p-1"
-        >
-          {FILTERS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={filter === value}
-              onClick={() => setFilter(value)}
-              className={`cursor-pointer rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
-                filter === value
-                  ? 'bg-card text-ink shadow-sm'
-                  : 'text-ink-3 hover:text-ink'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+  if (actionsOnly) {
+    if (!canCreate) return null
+    return (
+      <CreateProjectForm variant="button" eventUrl={eventUrl} />
+    )
+  }
+
+  if (filterOnly) {
+    return (
+      <div
+        role="tablist"
+        aria-label="Filter projects"
+        className="mb-6 inline-flex items-center gap-1 rounded-lg border border-border bg-card p-0.5"
+      >
+        {(
+          [
+            { value: 'all', label: 'All' },
+            { value: 'populated', label: 'Populated' },
+            { value: 'empty', label: 'Empty' },
+          ] as const
+        ).map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={filter === value}
+            onClick={() => setFilter(value)}
+            className={`cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              filter === value
+                ? 'bg-surface-2 text-ink'
+                : 'text-ink-3 hover:text-ink'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+    )
+  }
 
-      {/* Grid */}
-      {visible.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-ink-3">
-          No projects match{filter !== 'all' ? ` “${FILTERS.find((f) => f.value === filter)?.label}”` : ' this search'}.
-        </p>
-      ) : (
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {visible.map(({ project, stats }) => (
+  if (gridOnly) {
+    return (
+      <div className="grid gap-4 lg:grid-cols-2">
+        {filtered.map(({ project, stats }) => {
+          const eventCount = stats?.event_count ?? 0
+          const userCount = stats?.unique_users ?? 0
+          const unread = stats?.unread_count ?? 0
+
+          return (
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              className="group card overflow-hidden p-0 transition-colors hover:border-border-strong"
+              className="group flex flex-col rounded-2xl border border-border bg-card shadow-card transition-colors hover:border-border-strong"
             >
               {/* Card header */}
-              <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
-                <p className="truncate pr-2 text-sm font-medium text-ink group-hover:text-ink-2">
-                  {project.name}
-                </p>
-                <span className="shrink-0 rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[10px] font-medium text-ink-3">
+              <div className="flex items-start justify-between p-5">
+                <div>
+                  <h2 className="font-semibold text-ink">
+                    {project.name}
+                  </h2>
+                  <p className="mt-1 font-mono text-xs text-ink-3">
+                    {project.id}
+                  </p>
+                </div>
+                <span className="rounded-md border border-border px-2 py-1 font-mono text-[10px] tabular-nums text-ink-3">
                   {project.rate_limit_per_min} req/min
                 </span>
               </div>
 
-              {/* Metrics strip — full bleed */}
-              <div className="grid grid-cols-3 divide-x divide-border border-b border-border bg-canvas/50 py-3">
-                <div className="px-4">
-                  <p className="font-mono text-lg font-semibold leading-none tabular-nums text-ink">
-                    {stats
-                      ? stats.event_count.toLocaleString('en-IN')
-                      : '—'}
+              {/* Metrics strip with vertical dividers */}
+              <div className="grid grid-cols-3 border-y border-border py-4">
+                <Stat
+                  label="Events"
+                  value={
+                    stats
+                      ? eventCount.toLocaleString('en-IN')
+                      : '—'
+                  }
+                />
+                <Stat
+                  label="Users"
+                  value={
+                    stats
+                      ? userCount.toLocaleString('en-IN')
+                      : '—'
+                  }
+                />
+                <div className="border-r border-border px-5 last:border-r-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                    Unread
                   </p>
-                  <p className="mt-1 text-[11px] text-ink-4">events</p>
-                </div>
-                <div className="px-4">
-                  <p className="font-mono text-lg font-semibold leading-none tabular-nums text-ink">
-                    {stats
-                      ? stats.unique_users.toLocaleString('en-IN')
-                      : '—'}
-                  </p>
-                  <p className="mt-1 text-[11px] text-ink-4">users</p>
-                </div>
-                <div className="px-4">
                   <p
-                    className={`font-mono text-lg font-semibold leading-none tabular-nums ${
-                      (stats?.unread_count ?? 0) > 0
-                        ? 'text-copper'
-                        : 'text-ink-4'
+                    className={`mt-2 font-mono text-2xl font-semibold tabular-nums ${
+                      unread > 0 ? 'text-copper' : 'text-ink-4'
                     }`}
                   >
-                    {stats ? stats.unread_count.toLocaleString('en-IN') : '—'}
+                    {stats ? unread.toLocaleString('en-IN') : '—'}
                   </p>
-                  <p className="mt-1 text-[11px] text-ink-4">unread</p>
                 </div>
               </div>
 
               {/* Card footer */}
-              <div className="flex items-center justify-between px-4 py-2.5">
-                <p className="font-mono text-[11px] tabular-nums text-ink-3">
+              <div className="flex items-center justify-between p-5 text-xs text-ink-3">
+                <div>
                   Created{' '}
                   {new Date(project.created_at).toLocaleDateString('en-IN', {
                     dateStyle: 'medium',
                   })}
-                </p>
-                <span className="flex items-center gap-2">
+                  <span className="mx-2">·</span>
                   {stats?.last_event_at ? (
-                    <p className="font-mono text-[11px] tabular-nums text-ink-3">
-                      {timeAgo(stats.last_event_at)} ago
-                    </p>
+                    <>Last event {timeAgo(stats.last_event_at)} ago</>
                   ) : (
-                    <p className="font-mono text-[11px] italic text-ink-4">
-                      No events yet
-                    </p>
+                    <>No events yet</>
                   )}
-                  <ChevronRight className="h-3.5 w-3.5 text-ink-4 transition-colors group-hover:text-copper" />
+                </div>
+                <span className="inline-flex items-center gap-1 text-ink-3 transition-colors group-hover:text-copper">
+                  View <ArrowRight className="h-3.5 w-3.5" />
                 </span>
               </div>
             </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+          )
+        })}
+
+        {/* Empty "New project" card — inside grid */}
+        {canCreate && (
+          <div className="h-40">
+            <CreateProjectForm variant="card" eventUrl={eventUrl} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return null
 }

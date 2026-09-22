@@ -29,12 +29,39 @@ function timeAgo(dateStr: string): string {
   return `${days}d`
 }
 
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('en-IN', { hour12: false })
+}
+
+// Collapse a row's delivery logs into one `channel → status` path per channel,
+// keeping the latest status and marking repeated attempts with a ×N suffix.
+function channelPaths(logs: EventRow['logs']): string {
+  const byChannel = new Map<string, { status: string; attempts: number }>()
+  for (const log of logs) {
+    const prev = byChannel.get(log.channel)
+    if (prev) {
+      prev.status = log.status
+      prev.attempts += 1
+    } else {
+      byChannel.set(log.channel, { status: log.status, attempts: 1 })
+    }
+  }
+  return [...byChannel.entries()]
+    .map(
+      ([channel, { status, attempts }]) =>
+        `${channel} → ${status.toLowerCase()}${attempts > 1 ? ` ×${attempts}` : ''}`,
+    )
+    .join(' · ')
+}
+
 export function EventsList({
   events,
   projectId,
+  flashId,
 }: {
   events: EventRow[]
   projectId: string
+  flashId?: string | null
 }) {
   const [query, setQuery] = useState('')
 
@@ -79,7 +106,7 @@ export function EventsList({
                 Status
               </th>
               <th scope="col" className="hidden px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-ink-3 md:table-cell">
-                Channel
+                Channel path
               </th>
               <th scope="col" className="hidden px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-ink-3 lg:table-cell">
                 Received
@@ -90,17 +117,30 @@ export function EventsList({
             {filtered.map((e) => {
               const lastLog = e.logs[e.logs.length - 1]
               const status = lastLog?.status ?? 'pending'
-              const channel = lastLog?.channel ?? '—'
+              const isFlash = e.id === flashId
 
               return (
-                <tr key={e.id} className="h-11 transition-colors hover:bg-canvas">
+                <tr
+                  key={e.id}
+                  className={`h-11 transition-colors hover:bg-canvas ${
+                    isFlash ? 'bg-copper-tint' : ''
+                  }`}
+                >
                   <td className="px-4 align-middle">
-                    <Link
-                      href={`/projects/${projectId}/events/${e.id}`}
-                      className="cursor-pointer font-mono text-[13px] font-medium text-ink hover:text-copper hover:underline"
-                    >
-                      {e.event_name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {isFlash && (
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-copper" />
+                      )}
+                      <Link
+                        href={`/projects/${projectId}/events/${e.id}`}
+                        className="cursor-pointer font-mono text-[13px] font-medium text-ink hover:text-copper hover:underline"
+                      >
+                        {e.event_name}
+                      </Link>
+                    </div>
+                    <p className="mt-0.5 font-mono text-[11px] text-ink-3">
+                      {e.id}
+                    </p>
                   </td>
                   <td className="hidden px-4 align-middle font-mono text-[13px] text-ink-3 sm:table-cell">
                     {e.user_id}
@@ -109,13 +149,17 @@ export function EventsList({
                     <Status status={status} />
                   </td>
                   <td className="hidden px-4 align-middle md:table-cell">
-                    <span className="pill bg-surface-2 capitalize text-ink-3">
-                      {channel}
-                      {e.logs.length > 1 && <span className="text-ink-4">×{e.logs.length}</span>}
+                    <span className="font-mono text-[11px] text-ink-2">
+                      {e.logs.length > 0 ? channelPaths(e.logs) : '—'}
                     </span>
                   </td>
-                  <td className="hidden whitespace-nowrap px-4 align-middle text-xs tabular-nums text-ink-3 lg:table-cell">
-                    {e.received_at ? timeAgo(e.received_at) : '—'}
+                  <td className="hidden whitespace-nowrap px-4 align-middle text-right lg:table-cell">
+                    <span className="block font-mono text-xs tabular-nums text-ink-2">
+                      {e.received_at ? formatTime(e.received_at) : '—'}
+                    </span>
+                    <span className="block text-[11px] tabular-nums text-ink-3">
+                      {e.received_at ? `${timeAgo(e.received_at)} ago` : ''}
+                    </span>
                   </td>
                 </tr>
               )

@@ -37,11 +37,11 @@
   --amber-soft: #fdf1e3;
   --amber-ink: #9a5b1c;
 
-  /* Dark code wells */
-  --code-surface: #18181b;
-  --code-line: #27272a;
-  --code-foreground: #e7e5e4;
-  --code-muted: #a1a1aa;
+  /* Dark code wells — near-black with a warm copper undertone */
+  --code-surface: #201713;
+  --code-line: #2c1f19;
+  --code-foreground: #ece5e0;
+  --code-muted: #ab9c92;
 
   /* Overlay for modals */
   --overlay: rgb(28 25 23 / 0.5);

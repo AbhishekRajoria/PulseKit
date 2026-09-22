@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { Brand } from '@/app/components/Primitives'
 
 export default function Error({
@@ -24,13 +25,21 @@ export default function Error({
         An unexpected error occurred while rendering this page. Please try
         again.
       </p>
-      <button
-        type="button"
-        onClick={retry}
-        className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary-action px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
-      >
-        Try again
-      </button>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={retry}
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary-action px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-action-hover"
+        >
+          Try again
+        </button>
+        <Link
+          href="/"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          Go home
+        </Link>
+      </div>
     </main>
   )
 }

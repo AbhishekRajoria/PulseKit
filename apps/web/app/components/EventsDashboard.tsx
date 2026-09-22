@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CornerDownLeft, FileTerminal } from 'lucide-react'
 import { Code } from './Primitives'
 import { EventsList } from './EventsList'
@@ -19,6 +19,20 @@ type EventRow = {
 }
 
 const POLL_INTERVAL_MS = 8000
+const FLASH_MS = 2400
+
+// The newest event by received_at — the one that just arrived in the feed.
+function newestId(rows: EventRow[]): string | null {
+  let id: string | null = null
+  let at = ''
+  for (const row of rows) {
+    if (row.received_at && row.received_at > at) {
+      at = row.received_at
+      id = row.id
+    }
+  }
+  return id
+}
 
 export function EventsDashboard({
   projectId,
@@ -30,6 +44,9 @@ export function EventsDashboard({
   curlSnippet: string
 }) {
   const [events, setEvents] = useState(initialEvents)
+  const [flashId, setFlashId] = useState<string | null>(null)
+  const newestRef = useRef<string | null>(newestId(initialEvents))
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -40,7 +57,7 @@ export function EventsDashboard({
         const res = await fetch(`/api/events?project_id=${projectId}`)
         if (!res.ok) return
         const data = await res.json()
-        const next = data?.data ?? []
+        const next: EventRow[] = data?.data ?? []
         if (cancelled) return
         setEvents((prev) => {
           if (
@@ -51,6 +68,14 @@ export function EventsDashboard({
           }
           return next
         })
+
+        const nextNewest = newestId(next)
+        if (nextNewest && nextNewest !== newestRef.current) {
+          setFlashId(nextNewest)
+          if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+          flashTimerRef.current = setTimeout(() => setFlashId(null), FLASH_MS)
+        }
+        newestRef.current = nextNewest
       } catch {
         // transient network error — keep showing last known state
       }
@@ -60,6 +85,7 @@ export function EventsDashboard({
     return () => {
       cancelled = true
       clearInterval(id)
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     }
   }, [projectId])
 
@@ -122,13 +148,13 @@ export function EventsDashboard({
         </div>
       ) : (
         <>
-          {/* Stat cards — Total gets headline size, others secondary */}
+          {/* Stat strip — uniform 2xl display across all four */}
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div className="card px-5 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                 Total events
               </p>
-              <p className="mt-2 font-mono text-4xl font-semibold leading-none tabular-nums text-ink">
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none tabular-nums text-ink">
                 {total.toLocaleString()}
               </p>
             </div>
@@ -161,7 +187,11 @@ export function EventsDashboard({
           {/* Live feed banner attached above the events table */}
           <div className="mt-6">
             <LiveFeed projectId={projectId} />
-            <EventsList events={events} projectId={projectId} />
+            <EventsList
+              events={events}
+              projectId={projectId}
+              flashId={flashId}
+            />
           </div>
         </>
       )}

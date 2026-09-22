@@ -37,43 +37,59 @@ export default async function ProjectsPage() {
   }))
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
+    <div>
+      {/* Title area */}
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             Projects
           </h1>
-          {projects.length > 0 && (
-            <span className="pill border bg-surface-2 font-mono text-ink-3">
-              {projects.length}
-            </span>
-          )}
+          <p className="mt-1 text-sm text-ink-2">
+            Environments, API keys, and delivery limits.
+          </p>
         </div>
-        {projects.length > 0 && (
-          <CreateProjectForm eventUrl={`${apiUrl}/api/v1/events`} />
-        )}
+        <ProjectsBrowser
+          items={items}
+          eventUrl={`${apiUrl}/api/v1/events`}
+          actionsOnly
+          canCreate={items.length < 5}
+        />
       </div>
+
+      {/* Filter row */}
+      <ProjectsBrowser
+        items={items}
+        eventUrl={`${apiUrl}/api/v1/events`}
+        filterOnly
+      />
+
+      {/* Project grid */}
+      {projects.length > 0 && (
+        <ProjectsBrowser
+          items={items}
+          eventUrl={`${apiUrl}/api/v1/events`}
+          gridOnly
+          canCreate={items.length < 5}
+        />
+      )}
 
       {/* Empty state */}
       {projects.length === 0 && (
-        <div className="mt-12 flex flex-col items-center gap-6 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-lg bg-surface-2 text-ink-4">
-            <FolderKanban className="h-8 w-8" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-ink">No projects yet</p>
-            <p className="mt-1 text-xs text-ink-3">
-              Create your first project to start sending notifications
+        <div className="grid min-h-[500px] place-items-center rounded-2xl border border-dashed border-strong-border">
+          <div className="max-w-sm text-center">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl border border-border bg-card text-ink-3">
+              <FolderKanban className="h-5 w-5" />
+            </div>
+            <h2 className="mt-5 text-sm font-semibold text-ink">No projects yet</h2>
+            <p className="mt-2 text-sm text-ink-2">
+              Create a project to get your API key and start sending events.
             </p>
-          </div>
-          <div className="w-full max-w-md">
-            <CreateProjectForm eventUrl={`${apiUrl}/api/v1/events`} />
+            <div className="mt-6">
+              <CreateProjectForm eventUrl={`${apiUrl}/api/v1/events`} />
+            </div>
           </div>
         </div>
       )}
-
-      {/* Filterable grid */}
-      {projects.length > 0 && <ProjectsBrowser items={items} />}
     </div>
   )
 }

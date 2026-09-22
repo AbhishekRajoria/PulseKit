@@ -6,7 +6,28 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { PayloadBlock } from '@/app/components/PayloadBlock'
-import { Micro, Status } from '@/app/components/Primitives'
+import { Code, Micro, Status } from '@/app/components/Primitives'
+
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('en-IN', { hour12: false })
+}
+
+// Human note for a delivery attempt, shown in the status timeline.
+function attemptNote(log: Event['logs'][number]): string {
+  if (log.error_message) return log.error_message
+  switch (log.status) {
+    case 'delivered':
+      return 'acknowledged'
+    case 'pending':
+      return 'awaiting delivery'
+    case 'rate_limited':
+      return 'rate limit exceeded'
+    case 'deduplicated':
+      return 'duplicate suppressed'
+    default:
+      return log.status
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -44,6 +65,31 @@ export default async function ProjectEventDetailPage({
   const lastLog = event.logs[event.logs.length - 1]
   const status = lastLog?.status ?? 'pending'
   const channel = lastLog?.channel ?? '—'
+
+  const hasPayload =
+    !!event.payload && Object.keys(event.payload).length > 0
+
+  const receipt = `202 Accepted
+
+{
+  "eventId": "${event.id}",
+  "receivedAt": "${event.received_at}"
+}`
+
+  const timeline = [
+    {
+      label: 'Received',
+      time: event.received_at ? formatTime(event.received_at) : '—',
+      note: '202 accepted',
+      done: false,
+    },
+    ...event.logs.map((log) => ({
+      label: `${log.channel} → ${log.status.toLowerCase()}`,
+      time: log.delivered_at ? formatTime(log.delivered_at) : '—',
+      note: attemptNote(log),
+      done: log.status === 'delivered',
+    })),
+  ]
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -93,26 +139,43 @@ export default async function ProjectEventDetailPage({
             </div>
           </div>
 
-          {event.payload && Object.keys(event.payload).length > 0 && (
-            <PayloadBlock payload={event.payload} />
-          )}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <Micro>Event payload</Micro>
+              <div className="mt-2">
+                {hasPayload ? (
+                  <PayloadBlock payload={event.payload!} />
+                ) : (
+                  <div className="rounded-xl border border-border bg-surface-2 px-4 py-6 text-center text-xs text-ink-3">
+                    No payload attached to this event.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div>
+              <Micro>Response receipt</Micro>
+              <div className="mt-2">
+                <Code filename="response.json">{receipt}</Code>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Delivery logs */}
-      <div className="mt-8">
-        <div className="mb-3 flex items-center gap-2">
-          <p className="text-sm font-semibold text-ink">Delivery log</p>
-          <span className="pill bg-surface-2 font-mono text-ink-3">
-            {event.logs.length}
-          </span>
-        </div>
+      {/* Delivery log + status timeline */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="card overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+            <p className="text-sm font-semibold text-ink">Delivery log</p>
+            <span className="pill bg-surface-2 font-mono text-ink-3">
+              {event.logs.length}
+            </span>
+          </div>
           {event.logs.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-border bg-surface-2">
                     <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                       Channel
                     </th>
@@ -174,6 +237,35 @@ export default async function ProjectEventDetailPage({
               </p>
             </div>
           )}
+        </div>
+
+        {/* Status timeline — Received, then one step per delivery attempt */}
+        <div className="card p-5">
+          <Micro>Status timeline</Micro>
+          <ol className="mt-6 space-y-6">
+            {timeline.map((step, i, arr) => (
+              <li key={`${step.label}-${i}`} className="relative flex gap-4">
+                <div className="flex flex-col items-center">
+                  <span
+                    className={`mt-1 h-2.5 w-2.5 rounded-full ${
+                      step.done ? 'bg-copper' : 'bg-ink-3'
+                    }`}
+                  />
+                  {i < arr.length - 1 && (
+                    <span className="mt-1 w-px flex-1 bg-border" />
+                  )}
+                </div>
+                <div className="pb-1">
+                  <div className="font-mono text-[13px] text-ink">
+                    {step.label}
+                  </div>
+                  <div className="mt-1 font-mono text-[11px] tabular-nums text-ink-3">
+                    {step.time} · {step.note}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </div>

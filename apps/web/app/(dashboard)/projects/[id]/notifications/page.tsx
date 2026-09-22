@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { BellDot, CheckCheck, ChevronDown, LoaderCircle } from 'lucide-react'
+import { BellDot, CheckCheck, ChevronDown, LoaderCircle, Search } from 'lucide-react'
 import type { ApiResponse, Notification } from '@/types'
 
 type NotificationsResponse = {
@@ -38,6 +38,12 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [markingAll, setMarkingAll] = useState(false)
+  const [userQuery, setUserQuery] = useState('')
+
+  const q = userQuery.trim().toLowerCase()
+  const visibleUsers = users
+    ? users.filter((u) => u.user_id.toLowerCase().includes(q))
+    : null
 
   useEffect(() => {
     let cancelled = false
@@ -200,6 +206,22 @@ export default function NotificationsPage() {
             )}
           </div>
 
+          {Array.isArray(users) && users.length > 0 && (
+            <div className="border-b border-border p-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-4" />
+                <input
+                  type="search"
+                  value={userQuery}
+                  onChange={(e) => setUserQuery(e.target.value)}
+                  placeholder="Search user_id…"
+                  aria-label="Search inboxes"
+                  className="h-9 w-full rounded-md border border-border-strong bg-surface pl-9 pr-3 font-mono text-sm text-ink placeholder:text-ink-4 focus:outline-none focus:ring-2 focus:ring-ink/10"
+                />
+              </div>
+            </div>
+          )}
+
           {users === null && (
             <div className="flex flex-col items-center gap-3 px-6 py-14">
               <LoaderCircle className="h-5 w-5 animate-spin text-ink-3" />
@@ -218,48 +240,55 @@ export default function NotificationsPage() {
           )}
 
           {Array.isArray(users) && users.length > 0 && (
-            <ul className="divide-y divide-border">
-              {users.map((u) => {
-                const active = u.user_id === userId
-                const lastAgo = u.last_notification_at
-                  ? timeAgo(u.last_notification_at)
-                  : '—'
-                return (
-                  <li key={u.user_id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLoading(true)
-                        setUserId(u.user_id)
-                        setExpandedId(null)
-                      }}
-                      className={`flex w-full cursor-pointer items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors ${
-                        active
-                          ? 'border-l-copper bg-card'
-                          : 'border-l-transparent hover:bg-surface-2'
-                      }`}
-                    >
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 font-mono text-[10px] font-semibold text-ink-2">
-                        {u.user_id.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-mono text-xs text-ink">
-                          {u.user_id}
+            <>
+              {visibleUsers && visibleUsers.length === 0 && (
+                <p className="px-4 py-8 text-center text-xs text-ink-3">
+                  No inboxes match “{userQuery}”.
+                </p>
+              )}
+              <ul className="divide-y divide-border">
+                {(visibleUsers ?? users).map((u) => {
+                  const active = u.user_id === userId
+                  const lastAgo = u.last_notification_at
+                    ? timeAgo(u.last_notification_at)
+                    : '—'
+                  return (
+                    <li key={u.user_id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoading(true)
+                          setUserId(u.user_id)
+                          setExpandedId(null)
+                        }}
+                        className={`flex w-full cursor-pointer items-center gap-3 border-l-2 px-4 py-3.5 text-left transition-colors ${
+                          active
+                            ? 'border-l-copper bg-card'
+                            : 'border-l-transparent hover:bg-surface-2'
+                        }`}
+                      >
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-2 font-mono text-[10px] font-semibold text-ink-2">
+                          {u.user_id.slice(0, 2).toUpperCase()}
                         </span>
-                        <span className="mt-0.5 block text-[11px] text-ink-3">
-                          last {lastAgo}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-mono text-xs text-ink">
+                            {u.user_id}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-ink-3">
+                            last {lastAgo}
+                          </span>
                         </span>
-                      </span>
-                      {u.unread_count > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-copper px-1.5 font-mono text-[10px] font-semibold tabular-nums text-white">
-                          {u.unread_count}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+                        {u.unread_count > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-copper px-1.5 font-mono text-[10px] font-semibold tabular-nums text-white">
+                            {u.unread_count}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
           )}
         </aside>
 
