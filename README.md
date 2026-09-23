@@ -18,7 +18,7 @@ You instrument your app with one call. PulseKit handles everything after.
 ```ts
 import { PulseKit } from 'pulsekit-sdk'
 
-const pulse = new PulseKit({ apiKey: 'pk_live_...' })
+const pulse = new PulseKit({ apiKey: 'pk_test_...' })
 
 const receipt = await pulse.notify({
   event:    'payment.failed',
@@ -34,7 +34,7 @@ const receipt = await pulse.notify({
 
 ## How it works
 
-`POST /api/v1/events` ingests the event, enqueues a BullMQ job, and returns `202 Accepted` in the time it takes to write one Postgres row. A background worker process loads the project's `channels` config and fans out to every enabled channel in a single pass — each channel isolated in its own `try/catch` so a Slack failure never causes a duplicate email. Every attempt appends one row to the append-only `delivery_logs` table. After each attempt the worker publishes a delivery update to Redis, which the WebSocket server broadcasts to every connected dashboard client.
+`POST /api/v1/events` ingests the event, enqueues a BullMQ job, and returns `202 Accepted` in the time it takes to write one Postgres row. A background worker process loads the project's `channels` config and fans out to every enabled channel in a single pass — each channel isolated in its own `try/catch` so a Slack failure never causes a duplicate email. Failures and give-ups append rows to the append-only `delivery_logs` table. After each attempt the worker publishes a delivery update to Redis, which the WebSocket server broadcasts to every connected dashboard client.
 
 ---
 
@@ -53,7 +53,7 @@ npm install pulsekit-sdk
 ```ts
 import { PulseKit, PulseKitError } from 'pulsekit-sdk'
 
-const pulse = new PulseKit({ apiKey: 'pk_live_...' })
+const pulse = new PulseKit({ apiKey: 'pk_test_...' })
 
 try {
   const receipt = await pulse.notify({
@@ -82,7 +82,7 @@ try {
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `apiKey` | `string` | — | **Required.** Project API key (`pk_live_…`) |
+| `apiKey` | `string` | — | **Required.** Project API key (`pk_test_…`) |
 | `baseUrl` | `string` | `https://pulsekit-api.up.railway.app/api/v1` | Override to point at a self-hosted instance |
 | `timeout` | `number` | `10_000` | Request timeout in milliseconds |
 
@@ -147,7 +147,7 @@ Content-Type: application/json
 
 ```bash
 curl -X POST https://pulsekit-api.up.railway.app/api/v1/events \
-  -H "Authorization: Bearer pk_live_..." \
+  -H "Authorization: Bearer pk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "event_name": "payment.failed",

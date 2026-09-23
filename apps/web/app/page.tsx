@@ -33,14 +33,14 @@ const channels = [
     name: 'Email',
     sub: 'resend.com',
     description:
-      'Rendered from templates, sent via Resend with per-attempt status. No queue juggling on your side.',
+      'Rendered from templates, sent via Resend with per-delivery status. No queue juggling on your side.',
   },
   {
     icon: MessagesSquare,
     name: 'Slack',
     sub: 'incoming webhook',
     description:
-      'Fan out to channels or users through a plain incoming webhook. Failures surface as retried attempts.',
+      'Fan out to channels or users through a plain incoming webhook. Failures are logged, never silently dropped.',
   },
   {
     icon: Bell,
@@ -62,7 +62,7 @@ const pipeline = [
     num: '02',
     icon: Layers2,
     title: 'Route',
-    body: 'The API enqueues channel jobs with a sliding-window rate limit. Slower channels never block faster ones.',
+    body: 'Events pass a sliding-window rate limit, then the API enqueues delivery jobs. Channels fail independently — a failure on one never re-sends another.',
   },
   {
     num: '03',
@@ -81,7 +81,7 @@ const facts = [
 const infoCards = [
   {
     title: 'Explicit failure',
-    body: 'Every attempt is recorded against the delivery log. No silent drops — a failed attempt is a visible status.',
+    body: 'Failures are recorded against the delivery log. No silent drops — a failed attempt is a visible status.',
   },
   {
     title: 'Boring primitives',
@@ -163,7 +163,8 @@ export default async function Home() {
             </div>
             <p className="text-[15px] leading-relaxed text-ink-2 lg:max-w-md lg:justify-self-end">
               You define delivery targets; PulseKit runs the pipeline. Channels
-              fan out independently — a slow email never blocks a Slack alert.
+              fail independently — a Slack failure never re-sends a delivered
+              email.
             </p>
           </div>
 

@@ -33,7 +33,7 @@ const installCode = `npm install pulsekit-sdk`
 
 const quickstartCode = `import { PulseKit, PulseKitError } from 'pulsekit-sdk'
 
-const pulse = new PulseKit({ apiKey: 'pk_live_...' })
+const pulse = new PulseKit({ apiKey: 'pk_test_...' })
 
 const receipt = await pulse.notify({
   event:    'payment.failed',
@@ -45,7 +45,7 @@ const receipt = await pulse.notify({
 // → null on transient failure (5xx / 429 / network / timeout)`
 
 const restCode = `curl -X POST ${apiBase}/events \\
-  -H "Authorization: Bearer pk_live_..." \\
+  -H "Authorization: Bearer pk_test_..." \\
   -H "Content-Type: application/json" \\
   -d '{
     "event_name": "payment.failed",
@@ -144,7 +144,7 @@ export default async function DocsPage() {
                 head={['Code', 'Meaning']}
                 rows={[
                   ['202', 'Event accepted and enqueued'],
-                  ['400', 'event_name or user_id missing or invalid type'],
+                  ['400', 'event_name or user_id missing'],
                   ['401', 'Invalid or missing API key'],
                   ['429', 'Rate limit exceeded — Retry-After: 60'],
                   ['500', 'Server error'],
@@ -208,13 +208,14 @@ export default async function DocsPage() {
               </DocP>
               <DocP>
                 <code className="font-mono text-[13px] text-ink">delivery_logs</code>{' '}
-                is append-only — one row per attempt, never updated. Retry
-                history is preserved in full.
+                is append-only — failures and give-ups are recorded, never
+                updated.
               </DocP>
               <DocP>
                 Delivery statuses:{' '}
                 <span className="font-mono text-[13px] text-ink">
-                  pending · delivered · failed · rate_limited
+                  pending · delivered · failed · rate_limited · deduplicated
+                  (reserved)
                 </span>
               </DocP>
             </DocSection>
