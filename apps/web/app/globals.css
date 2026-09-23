@@ -188,3 +188,28 @@
     animation-duration: 1s !important;
   }
 }
+
+/* Event-path wave — nodes fill copper one by one, then the segment after
+   each node. 15 phases × 0.5s = 7.5s loop. Node i is lit during
+   [i*1.0s, i*1.0s+0.5s], segment i during [i*1.0s+0.5s, i*1.0s+1.0s];
+   per-element negative delays sync every phase.
+   Honours the global prefers-reduced-motion guard above. */
+@keyframes event-path-fill {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  6.7% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0;
+  }
+}
+
+.event-path-fill {
+  animation: event-path-fill 7.5s linear infinite;
+}
