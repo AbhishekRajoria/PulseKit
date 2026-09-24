@@ -6,12 +6,24 @@ type ConnStatus = 'connecting' | 'open' | 'closed'
 
 // Compact stream indicator for the events feed toolbar.
 // Copper ping while the socket is open, amber while (re)connecting, gray when closed.
+export type DeliveryUpdate = {
+  eventId: string
+  channel: string
+  status: string
+}
+
+// Compact stream indicator for the events feed toolbar.
+// Copper ping while the socket is open, amber while (re)connecting, gray when closed.
+// Delivery broadcasts for this project are forwarded to onDeliveryUpdate (if given)
+// so the parent can patch rows in real time instead of waiting for the next poll.
 export function LiveFeed({
   projectId,
   updates = 0,
+  onDeliveryUpdate,
 }: {
   projectId: string
   updates?: number
+  onDeliveryUpdate?: (update: DeliveryUpdate) => void
 }) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL
   const [connStatus, setConnStatus] = useState<ConnStatus>(
@@ -20,6 +32,10 @@ export function LiveFeed({
   const wsRef = useRef<WebSocket | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const delayRef = useRef(1000)
+  const onDeliveryUpdateRef = useRef(onDeliveryUpdate)
+  useEffect(() => {
+    onDeliveryUpdateRef.current = onDeliveryUpdate
+  })
 
   useEffect(() => {
     if (!wsUrl) return
@@ -32,9 +48,29 @@ export function LiveFeed({
       ws.onopen = () => setConnStatus('open')
       ws.onmessage = (e) => {
         try {
-          const msg = JSON.parse(e.data)
-          const data = msg.data as { projectId?: string }
+          const msg = JSON.parse(e.data) as {
+            type?: string
+            data?: {
+              projectId?: string
+              eventId?: string
+              channel?: string
+              status?: string
+            }
+          }
+          const data = msg.data
           if (data?.projectId && data.projectId !== projectId) return
+          if (
+            msg.type === 'delivery_update' &&
+            data?.eventId &&
+            data?.channel &&
+            data?.status
+          ) {
+            onDeliveryUpdateRef.current?.({
+              eventId: data.eventId,
+              channel: data.channel,
+              status: data.status,
+            })
+          }
         } catch {
           /* ignore */
         }

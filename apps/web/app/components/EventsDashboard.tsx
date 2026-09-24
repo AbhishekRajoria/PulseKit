@@ -65,7 +65,10 @@ export function EventsDashboard({
         setEvents((prev) => {
           if (
             prev.length === next.length &&
-            prev.every((e, i) => e.id === next[i].id)
+            prev.every(
+              (e, i) =>
+                e.id === next[i].id && e.logs.length === next[i].logs.length,
+            )
           ) {
             return prev
           }
@@ -92,6 +95,29 @@ export function EventsDashboard({
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     }
   }, [projectId])
+
+  // Patch a single row when a delivery broadcast arrives over the socket,
+  // so the table flips pending → delivered without waiting for the next poll.
+  // Idempotent: a repeat broadcast for the same channel+status is ignored.
+  const handleDeliveryUpdate = (update: {
+    eventId: string
+    channel: string
+    status: string
+  }) => {
+    setEvents((prev) =>
+      prev.map((row) => {
+        if (row.id !== update.eventId) return row
+        const last = row.logs[row.logs.length - 1]
+        if (last && last.channel === update.channel && last.status === update.status)
+          return row
+        return {
+          ...row,
+          logs: [...row.logs, { status: update.status, channel: update.channel }],
+        }
+      }),
+    )
+    setUpdates((u) => u + 1)
+  }
 
   const total = events.length
   const delivered = events.filter(
@@ -167,7 +193,13 @@ export function EventsDashboard({
           projectId={projectId}
           flashId={flashId}
           curlSnippet={curlSnippet}
-          toolbarRight={<LiveFeed projectId={projectId} updates={updates} />}
+          toolbarRight={
+            <LiveFeed
+              projectId={projectId}
+              updates={updates}
+              onDeliveryUpdate={handleDeliveryUpdate}
+            />
+          }
         />
       </div>
     </div>
