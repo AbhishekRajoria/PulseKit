@@ -47,7 +47,6 @@ export function EventsDashboard({
 }) {
   const [events, setEvents] = useState(initialEvents)
   const [flashId, setFlashId] = useState<string | null>(null)
-  const [updates, setUpdates] = useState(0)
   const newestRef = useRef<string | null>(newestId(initialEvents))
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -78,7 +77,6 @@ export function EventsDashboard({
         const nextNewest = newestId(next)
         if (nextNewest && nextNewest !== newestRef.current) {
           setFlashId(nextNewest)
-          setUpdates((u) => u + 1)
           if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
           flashTimerRef.current = setTimeout(() => setFlashId(null), FLASH_MS)
         }
@@ -195,7 +193,6 @@ export function EventsDashboard({
           toolbarRight={
             <LiveFeed
               projectId={projectId}
-              updates={updates}
               onDeliveryUpdate={handleDeliveryUpdate}
             />
           }

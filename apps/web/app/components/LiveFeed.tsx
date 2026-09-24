@@ -18,11 +18,9 @@ export type DeliveryUpdate = {
 // so the parent can patch rows in real time instead of waiting for the next poll.
 export function LiveFeed({
   projectId,
-  updates = 0,
   onDeliveryUpdate,
 }: {
   projectId: string
-  updates?: number
   onDeliveryUpdate?: (update: DeliveryUpdate) => void
 }) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL
@@ -118,10 +116,10 @@ export function LiveFeed({
         />
       </span>
       {connStatus === 'open'
-        ? `WebSocket stream · ${updates} updates`
+        ? 'WebSocket stream · Live'
         : connStatus === 'connecting'
           ? 'Connecting…'
-          : `Stream offline · ${updates} updates`}
+          : 'Stream offline'}
     </p>
   )
 }
