@@ -116,7 +116,6 @@ export function EventsDashboard({
         }
       }),
     )
-    setUpdates((u) => u + 1)
   }
 
   const total = events.length
