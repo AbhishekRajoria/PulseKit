@@ -143,6 +143,12 @@ export const notify = async (
   } catch (error) {
     console.error(error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    // Known issue: the event row above is already INSERTed, so a queue.add()
+    // failure (Redis down) leaves an orphan event with zero delivery_logs —
+    // permanently pending, never delivered. Fail-closed (503-shaped 500) is
+    // deliberate: silently accepting an undeliverable event is worse.
+    // Recovery today = client retries the request. The correct production
+    // fix is a transactional outbox; deferred as overkill for current scale.
     return res.status(500).json({
       success: false,
       error: `Failed to create event: ${message}`,

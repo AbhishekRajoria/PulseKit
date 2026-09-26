@@ -38,13 +38,22 @@ export const rateLimiter = async (
 
   const member = `${now}-${Math.random()}`;
 
-  const [allowed, count] = await redis.slidingWindowLimit(
-    key,
-    now,
-    60000,
-    rate_limit_per_min ?? 5,
-    member,
-  );
+  let allowed: number;
+  try {
+    [allowed] = await redis.slidingWindowLimit(
+      key,
+      now,
+      60000,
+      rate_limit_per_min ?? 5,
+      member,
+    );
+  } catch (err) {
+    // Redis down — fail open: skip rate limiting, never 500 ingest
+    // for an outage in the limiter. The queue enqueue downstream
+    // stays fail-closed (503) since delivery is impossible without Redis.
+    console.error("Rate limiter Redis error, failing open:", err);
+    return next();
+  }
 
   if (!allowed) {
     return res

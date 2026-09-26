@@ -188,6 +188,12 @@ Rate limiting is per project, not per IP — enforced by a Redis sliding-window 
 - Configurable: 5–30 req/min (set per project in the dashboard)
 - Blocked requests return `429` with `Retry-After: 60` and consume **no quota**
 - The client owns retry; BullMQ handles delivery-side retries automatically
+- If Redis is unreachable, rate limiting is **skipped, not failed** (fail-open) — ingest never 500s because of the limiter. The queue enqueue stays fail-closed: without Redis nothing can be delivered, so the request fails instead of being silently accepted.
+
+## Known limitations
+
+- **Orphan events on Redis outage.** The ingest path INSERTs the event row before `queue.add()`. If Redis is down between the two, the event sits in Postgres with zero `delivery_logs` — permanently pending, never delivered. Recovery is client retry (a retry creates a new event row; there is no dedup). The correct production fix is a transactional outbox; deliberately deferred — documented here instead of over-engineered.
+- **No delivery when all channels are disabled.** A project whose `channels` config is `{}` (the default) accepts events and resolves jobs successfully while delivering nothing. Enable at least one channel per project.
 
 ---
 
@@ -336,7 +342,7 @@ Apply the seven migrations and seed on Neon before the first deploy. The seed cr
 
 ### API — integration suite
 
-37 tests across 5 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
+38 tests across 6 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
 
 | Suite | Tests | Covers |
 |---|---|---|
@@ -345,6 +351,7 @@ Apply the seven migrations and seed on Neon before the first deploy. The seed cr
 | `event.integration.test.ts` | 6 | Ingest + queue assertion, `event_received` pub/sub broadcast, validation errors, auth isolation |
 | `notification.integration.test.ts` | 3 | Inbox listing, read state, auth isolation |
 | `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, window reset |
+| `rateLimiter.failopen.integration.test.ts` | 1 | Redis down → `next()` without responding (fail-open, mocked Redis) |
 
 The event suite asserts on queue state (`getJobCounts()`) rather than `delivery_logs` rows — queue counts are deterministic whether or not a live worker is consuming the queue.
 
