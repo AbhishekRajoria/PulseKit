@@ -77,8 +77,15 @@ export const renderEventEmail = ({
   payload,
   sentAt,
 }: EventEmailData): string => {
+  // Always UTC + labeled: the server's local tz is meaningless to the
+  // recipient, and a static email can't convert to the reader's tz.
+  // Bare local time is a lie in every timezone except one.
   const sent =
-    sentAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+    sentAt.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    }) + " UTC";
 
   const entries = Object.entries(payload);
   const MAX_ROWS = 10;
