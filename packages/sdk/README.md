@@ -71,7 +71,7 @@ Full diagram: [Architecture](https://github.com/AbhishekRajoria/PulseKit#archite
 | `user` | `string` | ✅ | `user_id` |
 | `data` | `object` | — | `payload` (defaults to `{}`) |
 | `to` | `string` | — | `to` — per-event email recipient override |
-| `userName` | `string` | — | `user_name` — friendly name for the email greeting |
+| `userName` | `string` | — | `user_name` — friendly name for the email greeting; stored on the email delivery row, never on the event |
 
 Returns `Promise<EventReceipt | null>`:
 
@@ -114,4 +114,4 @@ npm pack      # inspect the publish tarball
 
 - **Rate limits** — projects accept 5–30 events/min (default 30). Breaching it returns HTTP `429` with a `Retry-After: 60` header, which `notify()` surfaces as `null` — back off and retry.
 - **API keys** — a project key is shown exactly once at creation. It authenticates every call as `Authorization: Bearer <key>`.
-- **Version** — `0.1.0`. The wire contract is `POST /api/v1/events` → `202 Accepted` with `{ eventId, receivedAt }`.
+- **Version** — `0.1.1`. The wire contract is `POST /api/v1/events` → `202 Accepted` with `{ eventId, receivedAt }`.

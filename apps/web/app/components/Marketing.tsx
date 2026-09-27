@@ -96,7 +96,7 @@ export function MarketingHeader() {
         <div className="flex items-center gap-3">
           <Brand />
           <span className="rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-ink-3">
-            v0.1.0
+            v0.1.1
           </span>
         </div>
         <nav className="hidden items-center gap-1 md:flex">
@@ -174,7 +174,7 @@ const sdkSample = `await pulse.notify({
 const fanoutSamples: Array<[LucideIcon, string, string]> = [
   [Mail, 'Email · Resend', '1.4s'],
   [MessagesSquare, 'Slack · webhook', '0.9s'],
-  [Bell, 'In-app · WebSocket', '0.2s'],
+  [Bell, 'In-app · inbox', '0.2s'],
 ]
 
 export function LandingTerminal() {
@@ -265,6 +265,9 @@ export function LandingLiveFeed() {
         <span className="text-sm font-medium text-ink">Live delivery feed</span>
         <LiveDot />
       </div>
+      <p className="border-b border-border px-5 py-2 font-mono text-[10px] uppercase tracking-wider text-ink-4">
+        Illustrative sample — connect a project for the real feed
+      </p>
       <div className="divide-y divide-border">
         {feedEvents.map((e, i) => (
           <div

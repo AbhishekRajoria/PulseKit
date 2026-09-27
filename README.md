@@ -100,7 +100,7 @@ CamelCase input is mapped to the API's snake_case contract before sending.
 | `user` | `string` | ✅ | `user_id` | Your application's user identifier — never shown in emails |
 | `data` | `object` | — | `payload` | Defaults to `{}` |
 | `to` | `string` | — | `to` | Per-event email recipient — overrides the project's configured address. Does not enable a disabled channel. |
-| `userName` | `string` | — | `user_name` | Rendered as "Hi {name}," in the email. Transient — never stored. |
+| `userName` | `string` | — | `user_name` | Rendered as "Hi {name}," in the email. Stored on the email `delivery_logs` row only — never on the event. |
 
 **Return value:** `Promise<EventReceipt | null>`
 
@@ -172,6 +172,8 @@ curl -X POST https://pulsekit-api.up.railway.app/api/v1/events \
 }
 ```
 
+If the project has zero channels enabled, the event is still accepted — but `data` also carries `"warning": "no_channels_enabled"` so the caller learns nothing will deliver.
+
 **Status codes**
 
 | Code | Meaning |
@@ -197,7 +199,7 @@ Rate limiting is per project, not per IP — enforced by a Redis sliding-window 
 ## Known limitations
 
 - **Orphan events on Redis outage.** The ingest path INSERTs the event row before `queue.add()`. If Redis is down between the two, the event sits in Postgres with zero `delivery_logs` — permanently pending, never delivered. Recovery is client retry (a retry creates a new event row; there is no dedup). The correct production fix is a transactional outbox; deliberately deferred — documented here instead of over-engineered.
-- **No delivery when all channels are disabled.** A project whose `channels` config is `{}` (the default) accepts events and resolves jobs successfully while delivering nothing. Enable at least one channel per project.
+- **No delivery when all channels are disabled.** A project whose `channels` config is `{}` (the default) accepts events and resolves jobs successfully while delivering nothing. The dashboard banners this state, project cards carry a warning icon, and the `202` response carries `"warning": "no_channels_enabled"`. Enable at least one channel per project.
 
 ---
 
@@ -327,6 +329,7 @@ Live deployment:
 | `DATABASE_URL` | api, worker | Neon connection string with `sslmode=require` |
 | `REDIS_URL` | api, worker | Upstash `rediss://…:6379` |
 | `RESEND_API_KEY` | api, worker | |
+| `FROM_EMAIL` | worker | Verified-domain sender (`notifications@…`); unset falls back to Resend sandbox (owner inbox only) |
 | `COOKIE_SECRET` | api | Fresh random string per environment |
 | `NODE_ENV=production` | api, worker | Disables dev API-key fallback and Bull Board |
 | `PORT` | api | Injected by Railway |
@@ -338,7 +341,7 @@ API_URL=https://pulsekit-api.up.railway.app
 NEXT_PUBLIC_WS_URL=wss://pulsekit-api.up.railway.app
 ```
 
-Apply the seven migrations and seed on Neon before the first deploy. The seed creates one user and one project so the dashboard is not empty on first load.
+Apply the eight migrations and seed on Neon before the first deploy. The seed creates one user and one project so the dashboard is not empty on first load.
 
 ---
 
@@ -346,13 +349,13 @@ Apply the seven migrations and seed on Neon before the first deploy. The seed cr
 
 ### API — integration suite
 
-38 tests across 6 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
+40 tests across 6 suites. Each suite runs against a dedicated `pulsedb_test` database — supertest drives the real Express app through real Postgres and Redis with no test-only code in `src/`. Suites run serially (`fileParallelism: false`); each truncates tables and flushes Redis before running.
 
 | Suite | Tests | Covers |
 |---|---|---|
 | `auth.integration.test.ts` | 7 | Register (incl. Set-Cookie session), login, cookie session, logout, protected routes, orphan session |
 | `project.integration.test.ts` | 19 | CRUD, PATCH update + rate-limit validation, DELETE + event cascade, ownership scoping, duplicate-name handling, auth isolation, channel config (merge/save/disable, email + Slack validation) |
-| `event.integration.test.ts` | 6 | Ingest + queue assertion, `event_received` pub/sub broadcast, validation errors, auth isolation |
+| `event.integration.test.ts` | 8 | Ingest + queue assertion, `event_received` pub/sub broadcast, `no_channels_enabled` warning, validation errors, auth isolation |
 | `notification.integration.test.ts` | 3 | Inbox listing, read state, auth isolation |
 | `ratelimit.integration.test.ts` | 2 | 30 pass → 429 on 31st, window reset |
 | `rateLimiter.failopen.integration.test.ts` | 1 | Redis down → `next()` without responding (fail-open, mocked Redis) |
@@ -360,7 +363,7 @@ Apply the seven migrations and seed on Neon before the first deploy. The seed cr
 The event suite asserts on queue state (`getJobCounts()`) rather than `delivery_logs` rows — queue counts are deterministic whether or not a live worker is consuming the queue.
 
 ```bash
-# Prerequisites: pulsedb_test exists, migrations 001–007 applied, Postgres + Redis running
+# Prerequisites: pulsedb_test exists, migrations 001–008 applied, Postgres + Redis running
 cd apps/api
 npm test
 ```
@@ -384,7 +387,7 @@ npm test
 apps/
   api/                        Express API + BullMQ worker
     db/
-      migrations/             001–007 — canonical schema
+      migrations/             001–008 — canonical schema
       seed.sql                Dev bootstrap: 1 user + 1 project
     src/
       controllers/            auth, event, notification, project

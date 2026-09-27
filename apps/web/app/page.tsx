@@ -45,9 +45,9 @@ const channels = [
   {
     icon: Bell,
     name: 'In-app',
-    sub: 'realtime feed',
+    sub: 'project inbox',
     description:
-      'Delivered over WebSocket to a live feed. Read receipts and per-user targeting are built in.',
+      'Written to the project inbox with read receipts and per-user targeting. New arrivals surface on the live feed.',
   },
 ]
 
@@ -143,7 +143,7 @@ export default async function Home() {
               className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-ink-3 transition-colors hover:text-ink"
             >
               <Package className="h-3.5 w-3.5" />
-              pulsekit-sdk v0.1.0 on npm
+              pulsekit-sdk v0.1.1 on npm
             </a>
           </div>
 

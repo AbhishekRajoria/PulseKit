@@ -41,7 +41,8 @@ const envApiCode = `# apps/api/.env.local
 DATABASE_URL=postgres://pulsedev:pulse123@localhost:5432/pulsedb
 REDIS_URL=redis://localhost:6379
 RESEND_API_KEY=re_...
-COOKIE_SECRET=<random-string>`
+COOKIE_SECRET=<random-string>
+# FROM_EMAIL=notifications@yourdomain (prod sender; sandbox default locally)`
 
 const envWebCode = `# apps/web/.env
 API_URL=http://localhost:8080
@@ -80,7 +81,7 @@ const eventPathHops: {
       <>
         One authenticated call enters the pipeline. The SDK returns a receipt —{' '}
         <Mono>{'{ eventId, receivedAt }'}</Mono> — or <Mono>null</Mono> on
-        transient failure, never a throw.
+        transient failure. A 4xx misuse throws <Mono>PulseKitError</Mono>.
       </>
     ),
     code: { filename: 'TypeScript', body: sdkSnippetCode },
@@ -372,7 +373,7 @@ export default async function GuidePage() {
             <DocSection id="repo" index="05" title="Repo layout">
               <Code filename="tree">{`apps/
   api/                        Express API + BullMQ worker
-    db/migrations/           001–007 — canonical schema
+    db/migrations/           001–008 — canonical schema
     src/controllers/         auth, event, notification, project
     src/middleware/          apiKeyAuth, rateLimiter, authenticate
     src/lib/                 queue, redis, emailTemplate, websocket
@@ -407,7 +408,7 @@ packages/
                 ]}
               />
               <DocP>
-                Apply the seven migrations and seed on Neon before first deploy.
+                Apply the eight migrations and seed on Neon before first deploy.
               </DocP>
             </DocSection>
 
@@ -417,9 +418,11 @@ packages/
                 rows={[
                   ['auth.integration', '7', 'Register, login, cookie session, logout, protected routes'],
                   ['project.integration', '19', 'CRUD, ownership scoping, channel merge, rate-limit validation, auth isolation'],
-                  ['event.integration', '6', 'Ingest + queue assertion, validation, auth isolation'],
+                  ['event.integration', '8', 'Ingest + queue assertion, no-channels warning, validation, auth isolation'],
                   ['notification.integration', '3', 'Inbox, read state, auth isolation'],
                   ['ratelimit.integration', '2', '30 pass → 429 on the 31st, window reset'],
+                  ['rateLimiter.failopen', '1', 'Redis down → fail-open, mocked Redis'],
+                  ['ratelimiter unit', '4', 'Sliding-window Lua semantics'],
                   ['sdk contract', '16', 'Mocked-fetch notify() covering the full SDK contract'],
                 ]}
               />

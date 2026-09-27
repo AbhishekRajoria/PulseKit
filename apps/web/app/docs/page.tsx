@@ -94,7 +94,7 @@ export default async function DocsPage() {
                 >
                   pulsekit-sdk
                 </a>{' '}
-                (v0.1.0) — works with any Node 18+ runtime, no framework
+                (v0.1.1) — works with any Node 18+ runtime, no framework
                 required.
               </DocP>
             </DocSection>
@@ -128,7 +128,7 @@ export default async function DocsPage() {
                   ['user', 'string', 'yes', 'user_id', 'Never shown in emails'],
                   ['data', 'object', '—', 'payload', 'Defaults to {}'],
                   ['to', 'string', '—', 'to', 'Per-event email recipient override'],
-                  ['userName', 'string', '—', 'user_name', 'Email greeting, never stored'],
+                  ['userName', 'string', '—', 'user_name', 'Email greeting; stored on the email delivery row, never on the event'],
                 ]}
               />
             </DocSection>
@@ -140,6 +140,16 @@ export default async function DocsPage() {
               </DocP>
               <Code filename="bash">{restCode}</Code>
               <Code filename="response">{responseCode}</Code>
+              <DocP>
+                If the project has zero channels enabled, the event is still
+                accepted — but{' '}
+                <code className="font-mono text-[13px] text-ink">data</code>{' '}
+                also carries{' '}
+                <code className="font-mono text-[13px] text-ink">
+                  warning: &quot;no_channels_enabled&quot;
+                </code>{' '}
+                so the caller learns nothing will deliver.
+              </DocP>
               <DocTable
                 head={['Code', 'Meaning']}
                 rows={[
@@ -178,7 +188,7 @@ export default async function DocsPage() {
                   [
                     'Email',
                     'Resend',
-                    'Branded HTML, humanised payload, optional userName greeting',
+                    'Branded HTML, humanised payload, optional userName greeting; resolved recipient stored per attempt',
                   ],
                   [
                     'Slack',
