@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://get-pulsekit.vercel.app'
+  const base = 'https://getpulsekit.cloud'
   const now = new Date()
   return [
     { url: base, lastModified: now, changeFrequency: 'monthly', priority: 1 },

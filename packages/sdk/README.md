@@ -6,7 +6,7 @@ One function call. PulseKit handles the delivery.
 
 `pulsekit-sdk` is the official TypeScript client for the [PulseKit](https://github.com/AbhishekRajoria/PulseKit) notification API — multi-channel delivery (email, Slack, in-app), retries, rate limiting, and real-time delivery status behind a single `notify()` call.
 
-**[npm](https://www.npmjs.com/package/pulsekit-sdk) · [Dashboard](https://get-pulsekit.vercel.app) · [Docs](https://get-pulsekit.vercel.app/docs) · [GitHub](https://github.com/AbhishekRajoria/PulseKit)**
+**[npm](https://www.npmjs.com/package/pulsekit-sdk) · [Dashboard](https://getpulsekit.cloud) · [Docs](https://getpulsekit.cloud/docs) · [GitHub](https://github.com/AbhishekRajoria/PulseKit)**
 
 ## Install
 
@@ -60,7 +60,7 @@ Full diagram: [Architecture](https://github.com/AbhishekRajoria/PulseKit#archite
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `apiKey` | `string` | — | **Required.** Your project's API key |
-| `baseUrl` | `string` | `https://pulsekit-api.up.railway.app/api/v1` | Override the API base URL |
+| `baseUrl` | `string` | `https://api.getpulsekit.cloud/api/v1` | Override the API base URL |
 | `timeout` | `number` | `10_000` | Request timeout in ms |
 
 ### `await pulse.notify(input)`

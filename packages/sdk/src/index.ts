@@ -1,4 +1,4 @@
-const DEFAULT_BASE_URL = "https://pulsekit-api.up.railway.app/api/v1";
+const DEFAULT_BASE_URL = "https://api.getpulsekit.cloud/api/v1";
 const DEFAULT_TIMEOUT = 10_000;
 
 export type PulseKitOptions = {

@@ -30,7 +30,7 @@ describe("PulseKit constructor", () => {
     );
     await pk.notify({ event: "payment.failed", user: "123" });
     expect(fetch).toHaveBeenCalledWith(
-      "https://pulsekit-api.up.railway.app/api/v1/events",
+      "https://api.getpulsekit.cloud/api/v1/events",
       expect.anything(),
     );
   });
@@ -77,7 +77,7 @@ describe("notify success", () => {
     const res = await pk.notify({ event: "payment.failed", user: "123" });
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://pulsekit-api.up.railway.app/api/v1/events",
+      "https://api.getpulsekit.cloud/api/v1/events",
       expect.anything(),
     );
 
@@ -94,7 +94,7 @@ describe("notify success", () => {
     await pk.notify({ event: "payment.failed", user: "123" });
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://pulsekit-api.up.railway.app/api/v1/events",
+      "https://api.getpulsekit.cloud/api/v1/events",
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer pk_test_123",

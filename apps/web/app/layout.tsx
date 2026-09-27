@@ -12,7 +12,7 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
 })
 
-const siteUrl = 'https://get-pulsekit.vercel.app'
+const siteUrl = 'https://getpulsekit.cloud'
 const siteName = 'PulseKit'
 const title = 'PulseKit — Notify your users. One API call.'
 const description =

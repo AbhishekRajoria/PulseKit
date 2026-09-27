@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/projects', '/login', '/signup'],
     },
-    sitemap: 'https://get-pulsekit.vercel.app/sitemap.xml',
+    sitemap: 'https://getpulsekit.cloud/sitemap.xml',
   }
 }

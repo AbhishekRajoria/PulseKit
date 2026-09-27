@@ -27,7 +27,7 @@ const toc = [
   { href: '#realtime', label: 'Real-time feed' },
 ]
 
-const apiBase = 'https://pulsekit-api.up.railway.app/api/v1'
+const apiBase = 'https://api.getpulsekit.cloud/api/v1'
 
 const installCode = `npm install pulsekit-sdk`
 
@@ -235,7 +235,7 @@ export default async function DocsPage() {
                 The WebSocket server shares the Express HTTP server on the same
                 port{' '}
                 <code className="font-mono text-[13px] text-ink">
-                  wss://pulsekit-api.up.railway.app
+                  wss://api.getpulsekit.cloud
                 </code>
                 . The worker publishes a delivery_update message to Redis after
                 every attempt; the dashboard&apos;s LiveFeed filters by project

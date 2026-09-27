@@ -5,7 +5,7 @@
 
 Developer-facing notification and alerting infrastructure — one SDK call, multi-channel delivery with retries, rate limiting, and real-time status.
 
-**[npm](https://www.npmjs.com/package/pulsekit-sdk) · [Dashboard](https://get-pulsekit.vercel.app) · [API](https://pulsekit-api.up.railway.app) · [GitHub](https://github.com/AbhishekRajoria/PulseKit)**
+**[npm](https://www.npmjs.com/package/pulsekit-sdk) · [Dashboard](https://getpulsekit.cloud) · [API](https://api.getpulsekit.cloud) · [GitHub](https://github.com/AbhishekRajoria/PulseKit)**
 
 ---
 
@@ -50,7 +50,7 @@ npm install pulsekit-sdk
 
 ### Quickstart
 
-1. Sign in at [get-pulsekit.vercel.app](https://get-pulsekit.vercel.app), create a project, and copy your API key — it is shown exactly once.
+1. Sign in at [getpulsekit.cloud](https://getpulsekit.cloud), create a project, and copy your API key — it is shown exactly once.
 2. Configure at least one delivery channel in your project settings (email, Slack, or in-app).
 3. Send your first event:
 
@@ -87,7 +87,7 @@ try {
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `apiKey` | `string` | — | **Required.** Project API key (`pk_test_…`) |
-| `baseUrl` | `string` | `https://pulsekit-api.up.railway.app/api/v1` | Override to point at a self-hosted instance |
+| `baseUrl` | `string` | `https://api.getpulsekit.cloud/api/v1` | Override to point at a self-hosted instance |
 | `timeout` | `number` | `10_000` | Request timeout in milliseconds |
 
 ### `await pulse.notify(input)`
@@ -150,7 +150,7 @@ Content-Type: application/json
 **curl example**
 
 ```bash
-curl -X POST https://pulsekit-api.up.railway.app/api/v1/events \
+curl -X POST https://api.getpulsekit.cloud/api/v1/events \
   -H "Authorization: Bearer pk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
@@ -257,7 +257,7 @@ Delivery statuses: `pending` · `delivered` · `failed` · `rate_limited`
 The WebSocket server shares the Express HTTP server on the same port — no separate WS port to open.
 
 ```
-wss://pulsekit-api.up.railway.app
+wss://api.getpulsekit.cloud
 ```
 
 The worker publishes a `delivery_update` message to Redis after each attempt. The WS server subscribes via a dedicated Redis client and broadcasts to connected dashboard clients. The dashboard's `LiveFeed` component filters by `projectId` and reconnects automatically with backoff.
@@ -337,8 +337,8 @@ Live deployment:
 **Vercel environment variables (dashboard)**
 
 ```env
-API_URL=https://pulsekit-api.up.railway.app
-NEXT_PUBLIC_WS_URL=wss://pulsekit-api.up.railway.app
+API_URL=https://api.getpulsekit.cloud
+NEXT_PUBLIC_WS_URL=wss://api.getpulsekit.cloud
 ```
 
 Apply the eight migrations and seed on Neon before the first deploy. The seed creates one user and one project so the dashboard is not empty on first load.
