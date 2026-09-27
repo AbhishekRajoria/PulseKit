@@ -39,6 +39,8 @@ On success, `notify` returns a receipt:
 
 ## How it fits together
 
+![Eight-hop event path: SDK request → API persists → API enqueues → Worker claims → Resend sends → Attempt recorded → Redis publishes → Dashboard updates](https://raw.githubusercontent.com/AbhishekRajoria/PulseKit/main/docs/architecture.png)
+
 ```
 pulse.notify()
   → POST /api/v1/events → 202 Accepted
