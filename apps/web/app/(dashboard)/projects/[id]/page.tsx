@@ -6,6 +6,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Micro } from "@/app/components/Primitives";
+import {
+  NoChannelsBanner,
+  hasEnabledChannels,
+} from "@/app/components/NoChannelsBanner";
 import { CodeBlock } from "./code-block";
 
 export async function generateMetadata({
@@ -124,6 +128,12 @@ await pulsekit.notify({
           </Link>
         </div>
       </div>
+
+      {!hasEnabledChannels(project.channels) && (
+        <div className="mt-4">
+          <NoChannelsBanner projectId={id} />
+        </div>
+      )}
 
       {/* Stats — compact cards, left aligned */}
       <div className="mt-6 flex flex-col gap-5 sm:flex-row">

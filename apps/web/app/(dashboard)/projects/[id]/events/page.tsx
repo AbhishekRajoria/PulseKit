@@ -3,6 +3,10 @@ import { fetchApi } from '@/lib/api'
 import type { ApiResponse, Event, Project } from '@/types'
 import type { Metadata } from 'next'
 import { EventsDashboard } from '@/app/components/EventsDashboard'
+import {
+  NoChannelsBanner,
+  hasEnabledChannels,
+} from '@/app/components/NoChannelsBanner'
 
 export async function generateMetadata({
   params,
@@ -39,9 +43,11 @@ export default async function ProjectEventsPage({
   const events = data.data ?? []
 
   let projectName = 'Project'
+  let channelsOff = false
   if (projectRes.ok) {
     const projectData = (await projectRes.json()) as ApiResponse<Project>
     if (projectData.data?.name) projectName = projectData.data.name
+    channelsOff = !hasEnabledChannels(projectData.data?.channels)
   }
 
   const curlSnippet = `curl -X POST ${apiUrl}/api/v1/events \\
@@ -54,11 +60,18 @@ export default async function ProjectEventsPage({
   }'`
 
   return (
-    <EventsDashboard
-      projectId={projectId}
-      projectName={projectName}
-      initialEvents={events}
-      curlSnippet={curlSnippet}
-    />
+    <>
+      {channelsOff && (
+        <div className="mb-4">
+          <NoChannelsBanner projectId={projectId} />
+        </div>
+      )}
+      <EventsDashboard
+        projectId={projectId}
+        projectName={projectName}
+        initialEvents={events}
+        curlSnippet={curlSnippet}
+      />
+    </>
   )
 }

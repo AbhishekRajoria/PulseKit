@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { timeAgo } from '@/lib/format'
+import { hasEnabledChannels } from '@/app/components/NoChannelsBanner'
 import type { Project, ProjectStats } from '@/types'
 import CreateProjectForm from './create-form'
 
@@ -121,9 +122,20 @@ export default function ProjectsBrowser({
                     {project.id}
                   </p>
                 </div>
-                <span className="rounded-md border border-border px-2 py-1 font-mono text-[10px] tabular-nums text-ink-3">
-                  {project.rate_limit_per_min} req/min
-                </span>
+                <div className="flex shrink-0 items-center">
+                  <span className="rounded-md border border-border px-2 py-1 font-mono text-[10px] tabular-nums text-ink-3">
+                    {project.rate_limit_per_min} req/min
+                  </span>
+                  {!hasEnabledChannels(project.channels) && (
+                    <span
+                      title="No delivery channels enabled — events will be accepted but never delivered"
+                      aria-label="No delivery channels enabled"
+                      className="ml-2 inline-flex items-center rounded-md border border-copper/20 bg-copper-tint px-2 py-1 text-copper"
+                    >
+                      <TriangleAlert className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Metrics strip with vertical dividers */}

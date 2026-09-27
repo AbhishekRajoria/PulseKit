@@ -82,7 +82,7 @@ export const getProjects = async (
     const user_id = req.userId;
 
     const result = await pool.query(
-      `SELECT id, user_id, name, rate_limit_per_min, created_at
+      `SELECT id, user_id, name, rate_limit_per_min, channels, created_at
       FROM projects
       WHERE user_id=$1`,
       [user_id],
