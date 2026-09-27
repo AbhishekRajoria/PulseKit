@@ -89,7 +89,17 @@ export default async function ProjectEventDetailPage({
     event.logs.find((log) => log.status === 'pending') ??
     lastLog
   const status = decisiveLog?.status ?? 'pending'
-  const channel = decisiveLog?.channel ?? '—'
+  // One pill can't name three channels: when everything delivered, count
+  // them ("3 channels"); otherwise name the channel needing attention.
+  const allDelivered =
+    event.logs.length > 0 &&
+    event.logs.every((log) => log.status === 'delivered')
+  const channel =
+    decisiveLog && (decisiveLog.status === 'failed' || decisiveLog.status === 'pending')
+      ? decisiveLog.channel
+      : allDelivered
+        ? `${event.logs.length} channel${event.logs.length === 1 ? '' : 's'}`
+        : (decisiveLog?.channel ?? '—')
 
   const hasPayload =
     !!event.payload && Object.keys(event.payload).length > 0
@@ -211,7 +221,7 @@ export default async function ProjectEventDetailPage({
       </div>
 
       {/* Delivery log + status timeline */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
           <div className="flex items-center gap-2 border-b border-border px-5 py-3">
             <p className="text-sm font-semibold text-ink">Delivery log</p>
