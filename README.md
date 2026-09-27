@@ -38,17 +38,7 @@ const receipt = await pulse.notify({
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    SDK["pulse.notify()"] --> H1["1 · POST /api/v1/events → 202"]
-    H1 --> H2["2 · INSERT events (immutable)"]
-    H2 --> H3["3 · BullMQ enqueue (fail-closed)"]
-    H3 --> H4["4 · Worker reads channels config"]
-    H4 --> H5["5 · Resend (branded HTML)"]
-    H5 --> H6["6 · delivery_logs INSERT (append-only)"]
-    H6 --> H7["7 · Redis pub/sub"]
-    H7 --> H8["8 · WebSocket → dashboard"]
-```
+![Eight-hop event path: SDK request → API persists → API enqueues → Worker claims → Resend sends → Attempt recorded → Redis publishes → Dashboard updates](./docs/architecture.png)
 
 ---
 
@@ -244,7 +234,7 @@ Channels are configured per project in the dashboard. The worker only delivers t
 | **Slack** | Incoming webhook POST | Webhook redirects (e.g. expired URLs) are treated as failures — `redirect: "manual"` prevents false "delivered" logs |
 | **In-app** | Row inserted into `notifications` — queryable via `GET /api/v1/notifications/:userId` | Unread count included; mark-as-read and mark-all-read via `PATCH` |
 
-A per-event `to` field overrides the email recipient for that event only. It does not enable the email channel if it is not configured.
+A per-event `to` field overrides the email recipient for that event only. It does not enable the email channel if it is not configured. The two addresses serve two patterns: per-event `to` notifies *your user* (transactional), the project's configured address notifies *you* (alerts) — an event without `to` emails the developer, by design. Each email attempt stores its resolved `recipient_email`/`recipient_name` on the `delivery_logs` row, shown in the event detail page.
 
 Delivery failures on one channel never re-deliver the others. Each channel attempt is logged independently.
 

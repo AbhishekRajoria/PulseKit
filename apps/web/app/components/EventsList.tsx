@@ -30,7 +30,13 @@ function timeAgo(dateStr: string): string {
 }
 
 function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('en-IN', { hour12: false })
+  return new Date(dateStr).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  })
 }
 
 // Collapse a row's delivery logs into one `channel → status` path per channel,

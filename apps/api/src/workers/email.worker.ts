@@ -23,6 +23,11 @@ const worker = new Worker(
     const projectName = result.rows[0]?.name ?? "Untitled project";
 
     if (channels.email) {
+      // Resolved recipient, stored on the delivery_log row so the dashboard
+      // can show WHO was emailed: per-event override, else project config.
+      const to = job.data.to ?? channels.email.to ?? null;
+      const recipientName =
+        typeof job.data.user_name === "string" ? job.data.user_name : null;
       try {
         // FROM_EMAIL = verified domain sender in prod
         // (notifications@getpulsekit.cloud); falls back to Resend's sandbox
@@ -31,7 +36,7 @@ const worker = new Worker(
         // send email via Resend
         const { error } = await resend.emails.send({
           from,
-          to: job.data.to ?? channels.email.to,
+          to,
           subject: `${projectName} · ${sentenceCase(job.data.event_name)}`,
           html: renderEventEmail({
             projectName,
@@ -47,9 +52,16 @@ const worker = new Worker(
           throw new Error(`Resend failed: ${error.message}`);
         }
         await pool.query(
-          `INSERT INTO delivery_logs (event_id, project_id, channel, status)
-       VALUES ($1, $2, $3, $4)`,
-          [job.data.event_id, job.data.project_id, "email", "delivered"],
+          `INSERT INTO delivery_logs (event_id, project_id, channel, status, recipient_email, recipient_name)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            job.data.event_id,
+            job.data.project_id,
+            "email",
+            "delivered",
+            to,
+            recipientName,
+          ],
         );
 
         redis.publish(
@@ -68,8 +80,8 @@ const worker = new Worker(
       } catch (err) {
         const message = (err as Error).message;
         await pool.query(
-          `INSERT INTO delivery_logs (event_id, project_id, channel, status, attempt_number, error_message)
-        VALUES ($1, $2, $3, $4, $5, $6)`,
+          `INSERT INTO delivery_logs (event_id, project_id, channel, status, attempt_number, error_message, recipient_email, recipient_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             job.data.event_id,
             job.data.project_id,
@@ -77,6 +89,8 @@ const worker = new Worker(
             "failed",
             1,
             message,
+            to,
+            recipientName,
           ],
         );
         redis.publish(

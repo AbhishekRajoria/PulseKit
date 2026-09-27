@@ -9,7 +9,16 @@ import { PayloadBlock } from '@/app/components/PayloadBlock'
 import { Code, Micro, Status } from '@/app/components/Primitives'
 
 function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('en-IN', { hour12: false })
+  // NB: dateStyle/timeStyle shortcuts CANNOT mix with timeZoneName (throws
+  // "Invalid option"). Explicit fields + timeZone: 'UTC' keeps rendering
+  // deterministic regardless of server timezone.
+  return new Date(dateStr).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  })
 }
 
 // Human note for a delivery attempt, shown in the status timeline.
@@ -72,8 +81,15 @@ export default async function ProjectEventDetailPage({
   }
 
   const lastLog = event.logs[event.logs.length - 1]
-  const status = lastLog?.status ?? 'pending'
-  const channel = lastLog?.channel ?? '—'
+  // Header shows the log that needs attention, not just the latest row:
+  // a failure (or a still-pending channel) outranks an older delivered row,
+  // so "Delivered / Slack" never masks a failed email above it.
+  const decisiveLog =
+    event.logs.find((log) => log.status === 'failed') ??
+    event.logs.find((log) => log.status === 'pending') ??
+    lastLog
+  const status = decisiveLog?.status ?? 'pending'
+  const channel = decisiveLog?.channel ?? '—'
 
   const hasPayload =
     !!event.payload && Object.keys(event.payload).length > 0
@@ -157,8 +173,14 @@ export default async function ProjectEventDetailPage({
               <p className="mt-1.5 text-sm text-ink">
                 {event.received_at
                   ? new Date(event.received_at).toLocaleString('en-IN', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                      timeZone: 'UTC',
+                      timeZoneName: 'short',
                     })
                   : '—'}
               </p>
@@ -198,19 +220,21 @@ export default async function ProjectEventDetailPage({
             </span>
           </div>
           {event.logs.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface-2">
                     <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
                       Channel
                     </th>
-                    <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                      Status
-                    </th>
-                    <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                      Attempt
-                    </th>
+                      <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                        Status
+                      </th>
+                      <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 md:table-cell">
+                        Recipient
+                      </th>
+                      <th scope="col" className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                        Attempt
+                      </th>
                     <th scope="col" className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 sm:table-cell">
                       Error
                     </th>
@@ -233,6 +257,25 @@ export default async function ProjectEventDetailPage({
                       <td className="px-5 py-3">
                         <Status status={log.status} />
                       </td>
+                      <td className="hidden px-5 py-3 text-xs text-ink-2 md:table-cell">
+                        {log.channel === 'email' &&
+                        (log.recipient_email || log.recipient_name) ? (
+                          <>
+                            {log.recipient_name && (
+                              <span className="block font-medium text-ink">
+                                {log.recipient_name}
+                              </span>
+                            )}
+                            {log.recipient_email && (
+                              <span className="block break-all font-mono tabular-nums">
+                                {log.recipient_email}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-ink-4">&mdash;</span>
+                        )}
+                      </td>
                       <td className="px-5 py-3 font-mono text-xs tabular-nums text-ink-2">
                         {log.attempt_number}
                       </td>
@@ -243,15 +286,20 @@ export default async function ProjectEventDetailPage({
                       </td>
                       <td className="hidden whitespace-nowrap px-5 py-3 text-xs tabular-nums text-ink-3 md:table-cell">
                         {new Date(log.delivered_at).toLocaleString('en-IN', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: 'UTC',
+                          timeZoneName: 'short',
                         })}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
           ) : (
             <div className="px-5 py-8 text-center">
               <p className="text-sm font-medium text-ink">

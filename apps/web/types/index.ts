@@ -6,6 +6,8 @@ export type DeliveryLog = {
   status: "pending" | "delivered" | "failed" | "rate_limited" | "deduplicated";
   attempt_number: number;
   error_message: string | null;
+  recipient_email: string | null;
+  recipient_name: string | null;
   delivered_at: string;
 };
 
