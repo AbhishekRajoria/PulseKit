@@ -140,4 +140,41 @@ describe("POST /api/v1/events ", () => {
     expect(res.body.success).toBe(false);
     expect(res.body.code).toBe("UNAUTHENTICATED");
   });
+
+  it("warns no_channels_enabled on 202 when the project has zero channels", async () => {
+    const agent = await loginUser("channels-warn@test.com");
+    const created = await createProject(agent);
+
+    const apiKey = created.body.data.api_key;
+
+    const res = await request(app)
+      .post("/api/v1/events")
+      .set("Authorization", `Bearer ${apiKey}`)
+      .send({ event_name: "payment.failed", user_id: "user_123" });
+
+    expect(res.status).toBe(202);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.warning).toBe("no_channels_enabled");
+  });
+
+  it("omits the warning once a channel is enabled", async () => {
+    const agent = await loginUser("channels-ok@test.com");
+    const created = await createProject(agent);
+
+    const apiKey = created.body.data.api_key;
+    const projectId = created.body.data.id;
+
+    await agent
+      .patch(`/api/v1/projects/${projectId}/channels`)
+      .send({ email: { enabled: true, to: "dev@example.com" } });
+
+    const res = await request(app)
+      .post("/api/v1/events")
+      .set("Authorization", `Bearer ${apiKey}`)
+      .send({ event_name: "payment.failed", user_id: "user_123" });
+
+    expect(res.status).toBe(202);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.warning).toBeUndefined();
+  });
 });

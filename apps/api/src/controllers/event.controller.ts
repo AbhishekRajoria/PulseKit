@@ -61,6 +61,7 @@ export const getAllEvents = async (
 export type EventReceipt = {
   eventId: string;
   receivedAt: string;
+  warning?: "no_channels_enabled";
 };
 
 export const notify = async (
@@ -95,6 +96,21 @@ export const notify = async (
         VALUES ($1, $2, $3, $4)
         RETURNING *`,
       [project_id, event_name, user_id, payload],
+    );
+
+    // Isolated lookup (not in apiKeyAuth): only ingest needs this, and the
+    // auth hot path shouldn't pay for a column no other route reads.
+    const channelsRes = await pool.query(
+      `SELECT channels FROM projects WHERE id = $1`,
+      [project_id],
+    );
+    const channels = (channelsRes.rows[0]?.channels ?? {}) as {
+      email?: unknown;
+      slack?: unknown;
+      inapp?: unknown;
+    };
+    const channelsEnabled = Boolean(
+      channels.email || channels.slack || channels.inapp,
     );
 
     await emailQueue.add(
@@ -138,6 +154,12 @@ export const notify = async (
       data: {
         eventId: result.rows[0].id,
         receivedAt: result.rows[0].received_at,
+        // The event IS accepted and stored (202 stands) — but with zero
+        // channels enabled the worker fans out to nothing, so say so
+        // instead of letting the event sit pending with no explanation.
+        ...(channelsEnabled
+          ? {}
+          : { warning: "no_channels_enabled" as const }),
       },
     });
   } catch (error) {
