@@ -37,6 +37,20 @@ On success, `notify` returns a receipt:
 }
 ```
 
+## How it fits together
+
+```
+pulse.notify()
+  → POST /api/v1/events → 202 Accepted
+  → INSERT events (immutable fact, never updated)
+  → BullMQ enqueue (fail-closed delivery)
+  → Worker reads channels config → Resend / Slack / in-app
+  → delivery_logs INSERT (append-only audit)
+  → Redis pub/sub → WebSocket → dashboard, no refresh
+```
+
+Full diagram: [Architecture](https://github.com/AbhishekRajoria/PulseKit#architecture).
+
 ## API
 
 ### `new PulseKit(options)`

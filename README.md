@@ -36,6 +36,20 @@ const receipt = await pulse.notify({
 
 `POST /api/v1/events` ingests the event, enqueues a BullMQ job, and returns `202 Accepted` in the time it takes to write one Postgres row. A background worker process loads the project's `channels` config and fans out to every enabled channel in a single pass — each channel isolated in its own `try/catch` so a Slack failure never causes a duplicate email. Failures and give-ups append rows to the append-only `delivery_logs` table. After each attempt the worker publishes a delivery update to Redis, which the WebSocket server broadcasts to every connected dashboard client.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    SDK["pulse.notify()"] --> H1["1 · POST /api/v1/events → 202"]
+    H1 --> H2["2 · INSERT events (immutable)"]
+    H2 --> H3["3 · BullMQ enqueue (fail-closed)"]
+    H3 --> H4["4 · Worker reads channels config"]
+    H4 --> H5["5 · Resend (branded HTML)"]
+    H5 --> H6["6 · delivery_logs INSERT (append-only)"]
+    H6 --> H7["7 · Redis pub/sub"]
+    H7 --> H8["8 · WebSocket → dashboard"]
+```
+
 ---
 
 ## Install
