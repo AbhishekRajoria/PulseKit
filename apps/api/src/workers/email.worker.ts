@@ -24,9 +24,13 @@ const worker = new Worker(
 
     if (channels.email) {
       try {
+        // FROM_EMAIL = verified domain sender in prod
+        // (notifications@getpulsekit.cloud); falls back to Resend's sandbox
+        // sender locally, which only delivers to the account owner's inbox.
+        const from = process.env.FROM_EMAIL ?? "onboarding@resend.dev";
         // send email via Resend
         const { error } = await resend.emails.send({
-          from: "onboarding@resend.dev",
+          from,
           to: job.data.to ?? channels.email.to,
           subject: `${projectName} · ${sentenceCase(job.data.event_name)}`,
           html: renderEventEmail({
